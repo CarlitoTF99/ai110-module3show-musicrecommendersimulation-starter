@@ -46,9 +46,10 @@ Every recommender has three separate parts:
 
 My simulation is a **content-based** recommender. It has no other users to
 learn from, so it compares each song's features directly against one user's
-taste profile. It prioritizes **how a song sounds** (energy and valence) slightly
-over **how it's labeled** (genre and mood), because labels in a small dataset
-are sparse and inconsistent. Energy and valence together capture a song's
+taste profile.It balances **how a song is labeled** (genre and mood, up to 4.5 points)
+slightly above **how it sounds** (energy, valence, acousticness, up to 4.0
+points). That way the numbers rank songs within a genre or mood, but a song
+with no matching labels can't beat one that matches both. Energy and valence together capture a song's
 "vibe": energy is how intense it feels, valence is how positive it feels.
 
 
@@ -96,6 +97,52 @@ rewards songs that are *close* to what the user wants, not simply higher or lowe
 The scoring rule judges each song on its own. The ranking rule judges the list
 as a whole, which is why decisions like "don't repeat the same artist" belong
 there and not in the score.
+### Data flow
+flowchart TD
+    A[("songs.csv")] --> B["load_songs()"]
+    B --> C["List of songs"]
+
+    U["user_prefs<br/>favorite_genre, favorite_mood,<br/>target_energy, target_valence,<br/>likes_acoustic"] --> S
+    C -->|each song| S
+
+    subgraph S["score_song(user_prefs, song)"]
+        direction TB
+        G["Genre match<br/>exact or related"] --> T(("+"))
+        M["Mood match<br/>exact or same family"] --> T
+        E["Energy closeness"] --> T
+        V["Valence closeness"] --> T
+        AC["Acousticness fit"] --> T
+        T --> R["score + reasons"]
+    end
+
+    S --> RS["recommend_songs()"]
+
+    subgraph RS["recommend_songs(user_prefs, songs, k)"]
+        direction TB
+        SO["Sort by score, descending"] --> TB2["Break ties"]
+        TB2 --> K["Take top k"]
+    end
+
+    RS --> OUT["Top k recommendations<br/>with reasons"]
+
+    Example: for the profile above, *Library Rain* (lofi, chill, energy 0.35)
+scores about **8.37 / 8.5**, while *Storm Runner* (rock, intense, energy 0.91)
+scores about **1.38 / 8.5**.
+
+### Expected biases
+
+- **Genre imbalance:** lofi has the most songs *and* two related genres (jazz,
+  ambient), so lofi listeners get many more good matches than others.
+- **Unequal partial credit:** classical, reggae, and latin have no related
+  genres, so fans of those get either one exact match or nothing.
+- **Narrow profile:** a single `favorite_genre` means most songs earn 0 genre
+  points. A user who likes two genres can't express that.
+- **Double counting:** mood families and valence partly measure the same thing
+  (a "sad" match plus low valence), so emotionally labeled songs get rewarded twice.
+- **Conflicting preferences:** a user who wants "rock" but also "chill, low
+  energy" may get no rock songs at all, because mood + energy outweigh genre.
+- **Filter bubble:** nothing stops the top 5 from being all one genre or one
+  artist. I plan to address this with a diversity rule in the ranking step.
 
 ---
 
