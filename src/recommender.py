@@ -93,7 +93,6 @@ def load_songs(csv_path: str) -> List[Dict]:
     Loads songs from a CSV file.
     Required by src/main.py
     """
-    print(f"Loading songs from {csv_path}...")
     int_fields = {"id"}
     float_fields = {"energy", "tempo_bpm", "valence", "danceability", "acousticness"}
 

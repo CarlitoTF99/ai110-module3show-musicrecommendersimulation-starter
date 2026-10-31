@@ -17,10 +17,6 @@ Replace this paragraph with your own summary of what your version does.
 
 ## How The System Works
 
-Explain your design in plain language.
-
-## How The System Works
-
 ### How real recommenders work
 
 Platforms like Spotify and YouTube predict what you'll like next by combining
@@ -46,12 +42,11 @@ Every recommender has three separate parts:
 
 My simulation is a **content-based** recommender. It has no other users to
 learn from, so it compares each song's features directly against one user's
-taste profile.It balances **how a song is labeled** (genre and mood, up to 4.5 points)
+taste profile. It balances **how a song is labeled** (genre and mood, up to 4.5 points)
 slightly above **how it sounds** (energy, valence, acousticness, up to 4.0
 points). That way the numbers rank songs within a genre or mood, but a song
 with no matching labels can't beat one that matches both. Energy and valence together capture a song's
 "vibe": energy is how intense it feels, valence is how positive it feels.
-
 
 ### Features used
 
@@ -70,23 +65,61 @@ with no matching labels can't beat one that matches both. Energy and valence tog
 - `favorite_mood` – the mood they want
 - `target_energy` – preferred energy level (0–1)
 - `target_valence` – preferred positivity (0–1)
-- `likes_acoustic` – True/False, converted to a target acousticness of 0.8 / 0.2
+- `likes_acoustic` – True/False. If True, more acoustic songs earn more points; if False, more electronic (less acoustic) songs earn more points.
+
+### Dataset
+
+The catalog (`data/songs.csv`) started with 10 songs and was expanded to
+**20 songs** to add missing genres (e.g., hip-hop, metal, folk, classical) and
+moods (e.g., sad, angry, nostalgic), including low-valence songs the starter
+data didn't have.
+
+### Example user profile
+
+```python
+user_prefs = {
+    "favorite_genre": "lofi",
+    "favorite_mood": "chill",
+    "target_energy": 0.40,
+    "target_valence": 0.60,
+    "likes_acoustic": True,
+}
+```
+
+A calm, slightly positive, acoustic-leaning study listener.
 
 ### Algorithm Recipe
 
-**Scoring Rule** (one song vs. one user, max 10 points):
+**Scoring Rule** (one song vs. one user, max 8.5 points):
 
 | Feature | Points |
 |---|---|
-| Genre | +2.5 exact match · +1.25 related genre (pop ↔ indie pop) |
-| Mood | +2.0 exact match · +1.0 same mood family (chill / relaxed / focused) |
-| Energy | up to +3.0, based on closeness to the target |
-| Valence | up to +2.0, based on closeness to the target |
-| Acousticness | up to +0.5, based on closeness to the target |
+| Genre | +2.5 exact match · +1.25 related genre |
+| Mood | +2.0 exact match · +1.0 same mood family |
+| Energy | up to +2.0, based on closeness to the target |
+| Valence | up to +1.5, based on closeness to the target |
+| Acousticness | up to +0.5 → 0.5 × acousticness if `likes_acoustic`, else 0.5 × (1 − acousticness) |
 
-Closeness uses a bell curve (Gaussian): a song within about 0.15 of the user's
-target gets nearly full points, and the score drops off quickly beyond that. This
+Closeness uses a bell curve (Gaussian, σ = 0.20): a song near the user's target
+gets nearly full points, and the score drops off quickly as the gap grows. This
 rewards songs that are *close* to what the user wants, not simply higher or lower.
+
+**Related genres** (partial credit): pop ↔ indie pop, rock ↔ metal,
+lofi ↔ jazz, lofi ↔ ambient, electronic ↔ synthwave, folk ↔ country,
+blues ↔ jazz, hip-hop ↔ r&b.
+
+**Mood families** (partial credit): Calm (chill, relaxed, focused) ·
+Bright (happy, carefree, hopeful) · Driven (energetic, intense, confident) ·
+Low (sad, melancholy, moody) · Turbulent (angry, dramatic).
+
+*Romantic* and *nostalgic* are intentionally left ungrouped: they're distinct
+feelings, and grouping them would let someone who wants nostalgic folk get
+romantic R&B.
+
+**Why not the simpler +2 genre / +1 mood recipe?** In my data analysis, genre
+labels were sparse (most genres have one song) and mood labels were inconsistent,
+so I gave mood more weight and added valence and acousticness. That way the
+system responds to how a song actually sounds, not just its tags.
 
 **Ranking Rule** (all scored songs → final list):
 1. Score every song in the catalog.
@@ -94,9 +127,6 @@ rewards songs that are *close* to what the user wants, not simply higher or lowe
 3. Break ties by smallest energy distance, then by song id.
 4. Return the top *k* songs (default 5), each with the reasons behind its score.
 
-The scoring rule judges each song on its own. The ranking rule judges the list
-as a whole, which is why decisions like "don't repeat the same artist" belong
-there and not in the score.
 ### Data flow
 
 ```mermaid
@@ -159,6 +189,7 @@ scores about **1.38 / 8.5**.
    python -m venv .venv
    source .venv/bin/activate      # Mac or Linux
    .venv\Scripts\activate         # Windows
+   ```
 
 2. Install dependencies
 
@@ -186,19 +217,50 @@ You can add more tests in `tests/test_recommender.py`.
 
 ## Sample Recommendation Output
 
-Paste a sample of your recommender's output here as a text block so a reader can see what it produces:
+Profile: genre=pop | mood=happy | energy=0.80 | valence=0.80 | acoustic=no
+Loaded songs: 20
 
-```
-# e.g.:
-# User profile: genre=indie, mood=chill, energy=low
-# Recommendations:
-#   1. ...
-#   2. ...
-#   3. ...
-```
+### Top 5 recommendations
+======================================================
+1. Sunrise City - Neon Echo                    Score: 8.37 / 8.5
+     + genre match: pop (+2.50)
+     + mood match: happy (+2.00)
+     + energy 0.82 vs target 0.80 (+1.99)
+     + valence 0.84 vs target 0.80 (+1.47)
+     + acousticness 0.18, prefers non-acoustic (+0.41)
+------------------------------------------------------
+2. Rooftop Lights - Indigo Parade              Score: 7.04 / 8.5
+     + related genre: indie pop ~ pop (+1.25)
+     + mood match: happy (+2.00)
+     + energy 0.76 vs target 0.80 (+1.96)
+     + valence 0.81 vs target 0.80 (+1.50)
+     + acousticness 0.35, prefers non-acoustic (+0.33)
+------------------------------------------------------
+3. Gym Hero - Max Pulse                        Score: 6.07 / 8.5
+     + genre match: pop (+2.50)
+     + no mood match: intense (+0.00)
+     + energy 0.93 vs target 0.80 (+1.62)
+     + valence 0.77 vs target 0.80 (+1.48)
+     + acousticness 0.05, prefers non-acoustic (+0.47)
+------------------------------------------------------
+4. Island Slowdown - Roots Harbor              Score: 3.67 / 8.5
+     + no genre match: reggae (+0.00)
+     + mood family match: carefree ~ happy (+1.00)
+     + energy 0.55 vs target 0.80 (+0.92)
+     + valence 0.85 vs target 0.80 (+1.45)
+     + acousticness 0.40, prefers non-acoustic (+0.30)
+------------------------------------------------------
+5. Fuego en la Plaza - Los Faroles             Score: 3.57 / 8.5
+     + no genre match: latin (+0.00)
+     + no mood match: energetic (+0.00)
+     + energy 0.86 vs target 0.80 (+1.91)
+     + valence 0.88 vs target 0.80 (+1.38)
+     + acousticness 0.45, prefers non-acoustic (+0.28)
 
-**Screenshot or video** *(optional)*: <!-- Insert a screenshot or demo video link here -->
-
+  - Sunrise City ranks first because it matches every preference. Rooftop Lights is
+  second thanks to partial genre credit (indie pop ~ pop), and Gym Hero is still in
+  the top 3 because its genre and energy match, even though its mood ("intense")
+  doesn't.
 ---
 
 ## Experiments You Tried
