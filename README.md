@@ -98,6 +98,8 @@ The scoring rule judges each song on its own. The ranking rule judges the list
 as a whole, which is why decisions like "don't repeat the same artist" belong
 there and not in the score.
 ### Data flow
+
+```mermaid
 flowchart TD
     A[("songs.csv")] --> B["load_songs()"]
     B --> C["List of songs"]
@@ -115,7 +117,7 @@ flowchart TD
         T --> R["score + reasons"]
     end
 
-    S --> RS["recommend_songs()"]
+    S --> RS
 
     subgraph RS["recommend_songs(user_prefs, songs, k)"]
         direction TB
@@ -124,8 +126,9 @@ flowchart TD
     end
 
     RS --> OUT["Top k recommendations<br/>with reasons"]
+```
 
-    Example: for the profile above, *Library Rain* (lofi, chill, energy 0.35)
+Example: for the profile above, *Library Rain* (lofi, chill, energy 0.35)
 scores about **8.37 / 8.5**, while *Storm Runner* (rock, intense, energy 0.91)
 scores about **1.38 / 8.5**.
 
