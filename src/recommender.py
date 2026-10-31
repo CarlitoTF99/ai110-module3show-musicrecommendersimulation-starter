@@ -78,6 +78,7 @@ class Recommender:
         self.songs = songs
 
     def recommend(self, user: UserProfile, k: int = 5) -> List[Song]:
+        """Return the user's top k Song objects, ranked by score_song."""
         song_dicts = [asdict(song) for song in self.songs]
         # recommend_songs hands back the same dicts it was given, so map them to the original Songs
         by_dict_id = {id(d): song for d, song in zip(song_dicts, self.songs)}
@@ -85,14 +86,12 @@ class Recommender:
         return [by_dict_id[id(song_dict)] for song_dict, _, _ in ranked]
 
     def explain_recommendation(self, user: UserProfile, song: Song) -> str:
+        """Explain a song's score for the user as a "; "-joined string of reasons."""
         _, reasons = score_song(asdict(user), asdict(song))
         return "; ".join(reasons)
 
 def load_songs(csv_path: str) -> List[Dict]:
-    """
-    Loads songs from a CSV file.
-    Required by src/main.py
-    """
+    """Load songs from a CSV file into dicts, converting numeric columns and raising ValueError on bad rows."""
     int_fields = {"id"}
     float_fields = {"energy", "tempo_bpm", "valence", "danceability", "acousticness"}
 
@@ -121,10 +120,7 @@ def load_songs(csv_path: str) -> List[Dict]:
     return songs
 
 def score_song(user_prefs: Dict, song: Dict) -> Tuple[float, List[str]]:
-    """
-    Scores a single song against user preferences.
-    Required by recommend_songs() and src/main.py
-    """
+    """Score one song against a user's preferences and return (score, reasons)."""
     fav_genre = user_prefs["favorite_genre"].strip().lower()
     fav_mood = user_prefs["favorite_mood"].strip().lower()
     target_energy = _check_unit_range("target_energy", user_prefs["target_energy"])
@@ -184,27 +180,28 @@ def score_song(user_prefs: Dict, song: Dict) -> Tuple[float, List[str]]:
 
 
 def _gaussian(d: float, sigma: float) -> float:
+    """Return a closeness score in (0, 1] that is 1 when d is 0 and falls off with width sigma."""
     return math.exp(-(d ** 2) / (2 * sigma ** 2))
 
 
 def _genres_related(a: str, b: str) -> bool:
+    """Return True if the two genres are listed as a related pair in RELATED_GENRES."""
     return frozenset((a, b)) in RELATED_GENRES
 
 
 def _same_mood_family(a: str, b: str) -> bool:
+    """Return True if both moods belong to the same family in MOOD_FAMILIES."""
     return any(a in moods and b in moods for moods in MOOD_FAMILIES.values())
 
 
 def _check_unit_range(name: str, value: float) -> float:
+    """Return value as a float, raising ValueError if it is outside [0, 1]."""
     if not 0.0 <= value <= 1.0:
         raise ValueError(f"{name} must be between 0 and 1, got {value!r}")
     return float(value)
 
 def recommend_songs(user_prefs: Dict, songs: List[Dict], k: int = 5) -> List[Tuple[Dict, float, str]]:
-    """
-    Functional implementation of the recommendation logic.
-    Required by src/main.py
-    """
+    """Score every song and return the top k as (song, score, explanation), best first."""
     if k <= 0:
         return []
 

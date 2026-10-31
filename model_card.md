@@ -2,8 +2,7 @@
 
 ## 1. Model Name  
 
-Give your model a short, descriptive name.  
-Example: **VibeFinder 1.0**  
+**VibeMatch 1.0**, a content-based music recommender simulation.
 
 ---
 
@@ -19,18 +18,47 @@ Prompts:
 
 ---
 
-## 3. How the Model Works  
+## 3. How the Model Works
 
-Explain your scoring approach in simple language.  
+VibeMatch looks at every song in the catalog, gives each one a score out of
+8.5 points based on how well it fits what the listener asked for, and then
+shows the highest-scoring songs first.
 
-Prompts:  
+**What it knows about each song:** its genre, its mood, and three sound
+measurements, all on a 0-to-1 scale: *energy* (how intense it feels),
+*valence* (how happy or positive it sounds), and *acousticness* (acoustic
+instruments vs. electronic sound).
 
-- What features of each song are used (genre, energy, mood, etc.)  
-- What user preferences are considered  
-- How does the model turn those into a score  
-- What changes did you make from the starter logic  
+**What it knows about the listener:** their favorite genre, the mood they want,
+how energetic and how positive they want the music to be, and whether they like
+acoustic songs.
 
-Avoid code here. Pretend you are explaining the idea to a friend who does not program.
+**How a song earns points:**
+- **Genre (up to 2.5):** full points for the exact genre, half points for a
+  closely related one (for example, indie pop for a pop fan).
+- **Mood (up to 2.0):** full points for the exact mood, half points for a mood
+  in the same "family" (for example, focused or relaxed for someone who wants
+  chill).
+- **Energy (up to 2.0) and valence (up to 1.5):** the closer the song is to what
+  the listener wants, the more points it gets. A song that's almost exactly
+  right gets nearly full points, and the points fall off quickly as it gets
+  further away. Being *close* matters, not being higher or lower.
+- **Acousticness (up to 0.5):** a small bonus for acoustic songs if the listener
+  likes them, or for electronic songs if they don't.
+
+**How it picks the final list:** after every song has a score, it sorts them from
+highest to lowest, breaks ties by picking the song whose energy is closest to
+the listener's, and shows the top 5. Every recommendation lists exactly where
+its points came from, so the listener can see *why* it was chosen.
+
+**What changed from the starter logic:** the starter suggested a simple rule
+(+2 for genre, +1 for mood, plus an energy bonus). I gave mood more weight,
+added valence and acousticness, and added partial credit for related genres and
+similar moods. My data analysis showed that genre labels are sparse (most genres
+have only one song) and mood labels are inconsistent, so relying mostly on genre
+would leave most of the catalog with almost no points. I also left out tempo and
+danceability because in this dataset they move almost exactly with energy, and
+scoring them would count the same thing several times.
 
 ---
 

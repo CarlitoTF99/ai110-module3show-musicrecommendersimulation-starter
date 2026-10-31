@@ -1,3 +1,7 @@
+  
+  #Notes
+
+  
   user_prefs = {
       "favorite_genre": "lofi",
       "favorite_mood": "chill",
@@ -25,3 +29,4 @@
 - Per-user tolerance instead of a fixed σ
 - likes_acoustic → target number (None = don't care)
 - Artist/genre diversity in the top 5
+
