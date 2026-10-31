@@ -19,15 +19,83 @@ Replace this paragraph with your own summary of what your version does.
 
 Explain your design in plain language.
 
-Some prompts to answer:
+## How The System Works
 
-- What features does each `Song` use in your system
-  - For example: genre, mood, energy, tempo
-- What information does your `UserProfile` store
-- How does your `Recommender` compute a score for each song
-- How do you choose which songs to recommend
+### How real recommenders work
 
-You can include a simple diagram or bullet list if helpful.
+Platforms like Spotify and YouTube predict what you'll like next by combining
+two approaches. **Collaborative filtering** learns from the behavior of many
+users — plays, skips, saves, likes, playlist adds, watch time — and recommends
+what people with similar habits enjoyed ("listeners like you also played…").
+**Content-based filtering** describes each item by its own attributes — genre,
+mood, tempo, energy, and audio features extracted from the sound itself — and
+recommends items similar to what you already like. Real systems are hybrids:
+collaborative filtering finds surprising connections, while content-based
+filtering can recommend brand-new songs nobody has played yet (the "cold start"
+problem).
+
+Every recommender has three separate parts:
+
+1. **Input data** – what the system knows about each song (its features).
+2. **User preferences** – what the system knows about the listener (a taste
+   profile, or at scale, their listening history).
+3. **Ranking / selection** – how the system scores each song against the user
+   and decides which ones to show, in what order.
+
+### What my version does
+
+My simulation is a **content-based** recommender. It has no other users to
+learn from, so it compares each song's features directly against one user's
+taste profile. It prioritizes **how a song sounds** (energy and valence) slightly
+over **how it's labeled** (genre and mood), because labels in a small dataset
+are sparse and inconsistent. Energy and valence together capture a song's
+"vibe": energy is how intense it feels, valence is how positive it feels.
+
+
+### Features used
+
+**`Song`**
+- `genre` – category (pop, lofi, rock, …)
+- `mood` – category (happy, chill, intense, …)
+- `energy` – 0–1, how intense the song feels
+- `valence` – 0–1, how positive/happy it sounds
+- `acousticness` – 0–1, acoustic vs. electronic
+- (`tempo_bpm` and `danceability` are kept in the data but not scored — in this
+  dataset they are almost perfectly correlated with energy, so scoring them
+  would count "intensity" several times.)
+
+**`UserProfile`**
+- `favorite_genre` – the genre they want
+- `favorite_mood` – the mood they want
+- `target_energy` – preferred energy level (0–1)
+- `target_valence` – preferred positivity (0–1)
+- `likes_acoustic` – True/False, converted to a target acousticness of 0.8 / 0.2
+
+### Algorithm Recipe
+
+**Scoring Rule** (one song vs. one user, max 10 points):
+
+| Feature | Points |
+|---|---|
+| Genre | +2.5 exact match · +1.25 related genre (pop ↔ indie pop) |
+| Mood | +2.0 exact match · +1.0 same mood family (chill / relaxed / focused) |
+| Energy | up to +3.0, based on closeness to the target |
+| Valence | up to +2.0, based on closeness to the target |
+| Acousticness | up to +0.5, based on closeness to the target |
+
+Closeness uses a bell curve (Gaussian): a song within about 0.15 of the user's
+target gets nearly full points, and the score drops off quickly beyond that. This
+rewards songs that are *close* to what the user wants, not simply higher or lower.
+
+**Ranking Rule** (all scored songs → final list):
+1. Score every song in the catalog.
+2. Sort from highest to lowest score.
+3. Break ties by smallest energy distance, then by song id.
+4. Return the top *k* songs (default 5), each with the reasons behind its score.
+
+The scoring rule judges each song on its own. The ranking rule judges the list
+as a whole, which is why decisions like "don't repeat the same artist" belong
+there and not in the score.
 
 ---
 
