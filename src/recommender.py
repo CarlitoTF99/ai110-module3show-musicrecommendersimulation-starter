@@ -1,7 +1,7 @@
 import csv
 import math
 from typing import List, Dict, Tuple, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 # --- Scoring recipe (max 8.5 points) ---
 GENRE_EXACT_POINTS = 2.5
@@ -67,6 +67,7 @@ class UserProfile:
     favorite_mood: str
     target_energy: float
     likes_acoustic: bool
+    target_valence: float = DEFAULT_TARGET_VALENCE
 
 class Recommender:
     """
@@ -77,12 +78,15 @@ class Recommender:
         self.songs = songs
 
     def recommend(self, user: UserProfile, k: int = 5) -> List[Song]:
-        # TODO: Implement recommendation logic
-        return self.songs[:k]
+        song_dicts = [asdict(song) for song in self.songs]
+        # recommend_songs hands back the same dicts it was given, so map them to the original Songs
+        by_dict_id = {id(d): song for d, song in zip(song_dicts, self.songs)}
+        ranked = recommend_songs(asdict(user), song_dicts, k)
+        return [by_dict_id[id(song_dict)] for song_dict, _, _ in ranked]
 
     def explain_recommendation(self, user: UserProfile, song: Song) -> str:
-        # TODO: Implement explanation logic
-        return "Explanation placeholder"
+        _, reasons = score_song(asdict(user), asdict(song))
+        return "; ".join(reasons)
 
 def load_songs(csv_path: str) -> List[Dict]:
     """
@@ -202,6 +206,19 @@ def recommend_songs(user_prefs: Dict, songs: List[Dict], k: int = 5) -> List[Tup
     Functional implementation of the recommendation logic.
     Required by src/main.py
     """
-    # TODO: Implement scoring and ranking logic
-    # Expected return format: (song_dict, score, explanation)
-    return []
+    if k <= 0:
+        return []
+
+    target_energy = user_prefs["target_energy"]
+    scored = [(song, *score_song(user_prefs, song)) for song in songs]
+
+    # Highest score first; ties go to the closer energy, then the lower id
+    ranked = sorted(
+        scored,
+        key=lambda item: (
+            -item[1],
+            abs(item[0]["energy"] - target_energy),
+            item[0]["id"],
+        ),
+    )
+    return [(song, score, "; ".join(reasons)) for song, score, reasons in ranked[:k]]
