@@ -265,11 +265,334 @@ Loaded songs: 20
 
 ## Experiments You Tried
 
-Use this section to document the experiments you ran. For example:
+### Profile results
 
-- What happened when you changed the weight on genre from 2.0 to 0.5
-- What happened when you added tempo or valence to the score
-- How did your system behave for different types of users
+I ran the recommender for 3 standard profiles and 4 edge-case profiles designed
+to trick the scoring logic (`python -m src.main`). Full top-5 output for each:
+
+#### 1. High-Energy Pop
+```
+######################################################
+PROFILE: High-Energy Pop
+genre=pop | mood=happy | energy=0.80 | valence=0.80 | acoustic=no
+######################################################
+
+Top 5 recommendations
+
+======================================================
+1. Sunrise City - Neon Echo                    Score: 8.37 / 8.5
+     + genre match: pop (+2.50)
+     + mood match: happy (+2.00)
+     + energy 0.82 vs target 0.80 (+1.99)
+     + valence 0.84 vs target 0.80 (+1.47)
+     + acousticness 0.18, prefers non-acoustic (+0.41)
+------------------------------------------------------
+2. Rooftop Lights - Indigo Parade              Score: 7.04 / 8.5
+     + related genre: indie pop ~ pop (+1.25)
+     + mood match: happy (+2.00)
+     + energy 0.76 vs target 0.80 (+1.96)
+     + valence 0.81 vs target 0.80 (+1.50)
+     + acousticness 0.35, prefers non-acoustic (+0.33)
+------------------------------------------------------
+3. Gym Hero - Max Pulse                        Score: 6.07 / 8.5
+     + genre match: pop (+2.50)
+     + no mood match: intense (+0.00)
+     + energy 0.93 vs target 0.80 (+1.62)
+     + valence 0.77 vs target 0.80 (+1.48)
+     + acousticness 0.05, prefers non-acoustic (+0.47)
+------------------------------------------------------
+4. Island Slowdown - Roots Harbor              Score: 3.67 / 8.5
+     + no genre match: reggae (+0.00)
+     + mood family match: carefree ~ happy (+1.00)
+     + energy 0.55 vs target 0.80 (+0.92)
+     + valence 0.85 vs target 0.80 (+1.45)
+     + acousticness 0.40, prefers non-acoustic (+0.30)
+------------------------------------------------------
+5. Fuego en la Plaza - Los Faroles             Score: 3.57 / 8.5
+     + no genre match: latin (+0.00)
+     + no mood match: energetic (+0.00)
+     + energy 0.86 vs target 0.80 (+1.91)
+     + valence 0.88 vs target 0.80 (+1.38)
+     + acousticness 0.45, prefers non-acoustic (+0.28)
+```
+
+#### 2. Chill Lofi
+```
+######################################################
+PROFILE: Chill Lofi
+genre=lofi | mood=chill | energy=0.40 | valence=0.60 | acoustic=yes
+######################################################
+
+Top 5 recommendations
+======================================================
+1. Library Rain - Paper Lanterns               Score: 8.37 / 8.5
+     + genre match: lofi (+2.50)
+     + mood match: chill (+2.00)
+     + energy 0.35 vs target 0.40 (+1.94)
+     + valence 0.60 vs target 0.60 (+1.50)
+     + acousticness 0.86, likes acoustic (+0.43)
+------------------------------------------------------
+2. Midnight Coding - LoRoom                    Score: 8.31 / 8.5
+     + genre match: lofi (+2.50)
+     + mood match: chill (+2.00)
+     + energy 0.42 vs target 0.40 (+1.99)
+     + valence 0.56 vs target 0.60 (+1.47)
+     + acousticness 0.71, likes acoustic (+0.35)
+------------------------------------------------------
+3. Focus Flow - LoRoom                         Score: 7.39 / 8.5
+     + genre match: lofi (+2.50)
+     + mood family match: focused ~ chill (+1.00)
+     + energy 0.40 vs target 0.40 (+2.00)
+     + valence 0.59 vs target 0.60 (+1.50)
+     + acousticness 0.78, likes acoustic (+0.39)
+------------------------------------------------------
+4. Spacewalk Thoughts - Orbit Bloom            Score: 6.83 / 8.5
+     + related genre: ambient ~ lofi (+1.25)
+     + mood match: chill (+2.00)
+     + energy 0.28 vs target 0.40 (+1.67)
+     + valence 0.65 vs target 0.60 (+1.45)
+     + acousticness 0.92, likes acoustic (+0.46)
+------------------------------------------------------
+5. Coffee Shop Stories - Slow Stereo           Score: 5.97 / 8.5
+     + related genre: jazz ~ lofi (+1.25)
+     + mood family match: relaxed ~ chill (+1.00)
+     + energy 0.37 vs target 0.40 (+1.98)
+     + valence 0.71 vs target 0.60 (+1.29)
+     + acousticness 0.89, likes acoustic (+0.45)
+
+```
+
+#### 3. Deep Intense Rock
+```
+######################################################
+PROFILE: Deep Intense Rock
+genre=rock | mood=intense | energy=0.90 | valence=0.40 | acoustic=no
+######################################################
+
+Top 5 recommendations
+======================================================
+1. Storm Runner - Voltline                     Score: 8.33 / 8.5
+     + genre match: rock (+2.50)
+     + mood match: intense (+2.00)
+     + energy 0.91 vs target 0.90 (+2.00)
+     + valence 0.48 vs target 0.40 (+1.38)
+     + acousticness 0.10, prefers non-acoustic (+0.45)
+------------------------------------------------------
+2. Gym Hero - Max Pulse                        Score: 4.72 / 8.5
+     + no genre match: pop (+0.00)
+     + mood match: intense (+2.00)
+     + energy 0.93 vs target 0.90 (+1.98)
+     + valence 0.77 vs target 0.40 (+0.27)
+     + acousticness 0.05, prefers non-acoustic (+0.47)
+------------------------------------------------------
+3. Ironclad Fury - Grave Circuit               Score: 4.43 / 8.5
+     + related genre: metal ~ rock (+1.25)
+     + no mood match: angry (+0.00)
+     + energy 0.97 vs target 0.90 (+1.88)
+     + valence 0.18 vs target 0.40 (+0.82)
+     + acousticness 0.03, prefers non-acoustic (+0.48)
+------------------------------------------------------
+4. Concrete Psalms - Verse Theory              Score: 4.02 / 8.5
+     + no genre match: hip-hop (+0.00)
+     + mood family match: confident ~ intense (+1.00)
+     + energy 0.80 vs target 0.90 (+1.76)
+     + valence 0.62 vs target 0.40 (+0.82)
+     + acousticness 0.12, prefers non-acoustic (+0.44)
+------------------------------------------------------
+5. Fuego en la Plaza - Los Faroles             Score: 3.32 / 8.5
+     + no genre match: latin (+0.00)
+     + mood family match: energetic ~ intense (+1.00)
+     + energy 0.86 vs target 0.90 (+1.96)
+     + valence 0.88 vs target 0.40 (+0.08)
+     + acousticness 0.45, prefers non-acoustic (+0.28)
+
+```
+
+#### 4. Sad Banger (edge case)
+```
+
+######################################################
+PROFILE: Sad Banger (edge case)
+genre=blues | mood=sad | energy=0.90 | valence=0.20 | acoustic=no
+######################################################
+
+Top 5 recommendations
+======================================================
+1. Rust in the Rain - Delta Marrow             Score: 6.13 / 8.5
+     + genre match: blues (+2.50)
+     + mood match: sad (+2.00)
+     + energy 0.33 vs target 0.90 (+0.03)
+     + valence 0.22 vs target 0.20 (+1.49)
+     + acousticness 0.78, prefers non-acoustic (+0.11)
+------------------------------------------------------
+2. Ironclad Fury - Grave Circuit               Score: 3.85 / 8.5
+     + no genre match: metal (+0.00)
+     + no mood match: angry (+0.00)
+     + energy 0.97 vs target 0.90 (+1.88)
+     + valence 0.18 vs target 0.20 (+1.49)
+     + acousticness 0.03, prefers non-acoustic (+0.48)
+------------------------------------------------------
+3. Night Drive Loop - Neon Echo                Score: 3.42 / 8.5
+     + no genre match: synthwave (+0.00)
+     + mood family match: moody ~ sad (+1.00)
+     + energy 0.75 vs target 0.90 (+1.51)
+     + valence 0.49 vs target 0.20 (+0.52)
+     + acousticness 0.22, prefers non-acoustic (+0.39)
+------------------------------------------------------
+4. Storm Runner - Voltline                     Score: 3.01 / 8.5
+     + no genre match: rock (+0.00)
+     + no mood match: intense (+0.00)
+     + energy 0.91 vs target 0.90 (+2.00)
+     + valence 0.48 vs target 0.20 (+0.56)
+     + acousticness 0.10, prefers non-acoustic (+0.45)
+------------------------------------------------------
+5. Afterglow Static - Kaito Mere               Score: 2.86 / 8.5
+     + no genre match: electronic (+0.00)
+     + mood family match: melancholy ~ sad (+1.00)
+     + energy 0.30 vs target 0.90 (+0.02)
+     + valence 0.28 vs target 0.20 (+1.38)
+     + acousticness 0.08, prefers non-acoustic (+0.46)
+
+```
+
+#### 5. Acoustic Chill Rock (edge case)
+```
+######################################################
+PROFILE: Acoustic Chill Rock (edge case)
+genre=rock | mood=chill | energy=0.20 | valence=0.60 | acoustic=yes
+######################################################
+
+Top 5 recommendations
+======================================================
+1. Spacewalk Thoughts - Orbit Bloom            Score: 5.76 / 8.5
+     + no genre match: ambient (+0.00)
+     + mood match: chill (+2.00)
+     + energy 0.28 vs target 0.20 (+1.85)
+     + valence 0.65 vs target 0.60 (+1.45)
+     + acousticness 0.92, likes acoustic (+0.46)
+------------------------------------------------------
+2. Library Rain - Paper Lanterns               Score: 5.44 / 8.5
+     + no genre match: lofi (+0.00)
+     + mood match: chill (+2.00)
+     + energy 0.35 vs target 0.20 (+1.51)
+     + valence 0.60 vs target 0.60 (+1.50)
+     + acousticness 0.86, likes acoustic (+0.43)
+------------------------------------------------------
+3. Midnight Coding - LoRoom                    Score: 4.91 / 8.5
+     + no genre match: lofi (+0.00)
+     + mood match: chill (+2.00)
+     + energy 0.42 vs target 0.20 (+1.09)
+     + valence 0.56 vs target 0.60 (+1.47)
+     + acousticness 0.71, likes acoustic (+0.35)
+------------------------------------------------------
+4. Coffee Shop Stories - Slow Stereo           Score: 4.13 / 8.5
+     + no genre match: jazz (+0.00)
+     + mood family match: relaxed ~ chill (+1.00)
+     + energy 0.37 vs target 0.20 (+1.39)
+     + valence 0.71 vs target 0.60 (+1.29)
+     + acousticness 0.89, likes acoustic (+0.45)
+------------------------------------------------------
+5. Focus Flow - LoRoom                         Score: 4.10 / 8.5
+     + no genre match: lofi (+0.00)
+     + mood family match: focused ~ chill (+1.00)
+     + energy 0.40 vs target 0.20 (+1.21)
+     + valence 0.59 vs target 0.60 (+1.50)
+     + acousticness 0.78, likes acoustic (+0.39)
+```
+
+#### 6. Ghost Genre (edge case)
+```
+######################################################
+PROFILE: Ghost Genre (edge case)
+genre=k-pop | mood=happy | energy=0.80 | valence=0.80 | acoustic=no
+######################################################
+
+Top 5 recommendations
+======================================================
+1. Sunrise City - Neon Echo                    Score: 5.87 / 8.5
+     + no genre match: pop (+0.00)
+     + mood match: happy (+2.00)
+     + energy 0.82 vs target 0.80 (+1.99)
+     + valence 0.84 vs target 0.80 (+1.47)
+     + acousticness 0.18, prefers non-acoustic (+0.41)
+------------------------------------------------------
+2. Rooftop Lights - Indigo Parade              Score: 5.79 / 8.5
+     + no genre match: indie pop (+0.00)
+     + mood match: happy (+2.00)
+     + energy 0.76 vs target 0.80 (+1.96)
+     + valence 0.81 vs target 0.80 (+1.50)
+     + acousticness 0.35, prefers non-acoustic (+0.33)
+------------------------------------------------------
+3. Island Slowdown - Roots Harbor              Score: 3.67 / 8.5
+     + no genre match: reggae (+0.00)
+     + mood family match: carefree ~ happy (+1.00)
+     + energy 0.55 vs target 0.80 (+0.92)
+     + valence 0.85 vs target 0.80 (+1.45)
+     + acousticness 0.40, prefers non-acoustic (+0.30)
+------------------------------------------------------
+4. Fuego en la Plaza - Los Faroles             Score: 3.57 / 8.5
+     + no genre match: latin (+0.00)
+     + no mood match: energetic (+0.00)
+     + energy 0.86 vs target 0.80 (+1.91)
+     + valence 0.88 vs target 0.80 (+1.38)
+     + acousticness 0.45, prefers non-acoustic (+0.28)
+------------------------------------------------------
+5. Gym Hero - Max Pulse                        Score: 3.57 / 8.5
+     + no genre match: pop (+0.00)
+     + no mood match: intense (+0.00)
+     + energy 0.93 vs target 0.80 (+1.62)
+     + valence 0.77 vs target 0.80 (+1.48)
+     + acousticness 0.05, prefers non-acoustic (+0.47)
+
+```
+
+#### 7. Silent Classical (edge case)
+```
+######################################################
+PROFILE: Silent Classical (edge case)
+genre=classical | mood=calm | energy=0.00 | valence=1.00 | acoustic=yes
+######################################################
+
+Top 5 recommendations
+======================================================
+1. Tempest Overture - Varga Chamber Ensemble   Score: 2.97 / 8.5
+     + genre match: classical (+2.50)
+     + no mood match: dramatic (+0.00)
+     + energy 0.72 vs target 0.00 (+0.00)
+     + valence 0.30 vs target 1.00 (+0.00)
+     + acousticness 0.95, likes acoustic (+0.47)
+------------------------------------------------------
+2. Spacewalk Thoughts - Orbit Bloom            Score: 1.53 / 8.5
+     + no genre match: ambient (+0.00)
+     + no mood match: chill (+0.00)
+     + energy 0.28 vs target 0.00 (+0.75)
+     + valence 0.65 vs target 1.00 (+0.32)
+     + acousticness 0.92, likes acoustic (+0.46)
+------------------------------------------------------
+3. Fuego en la Plaza - Los Faroles             Score: 1.48 / 8.5
+     + no genre match: latin (+0.00)
+     + no mood match: energetic (+0.00)
+     + energy 0.86 vs target 0.00 (+0.00)
+     + valence 0.88 vs target 1.00 (+1.25)
+     + acousticness 0.45, likes acoustic (+0.23)
+------------------------------------------------------
+4. Island Slowdown - Roots Harbor              Score: 1.38 / 8.5
+     + no genre match: reggae (+0.00)
+     + no mood match: carefree (+0.00)
+     + energy 0.55 vs target 0.00 (+0.05)
+     + valence 0.85 vs target 1.00 (+1.13)
+     + acousticness 0.40, likes acoustic (+0.20)
+------------------------------------------------------
+5. Coffee Shop Stories - Slow Stereo           Score: 1.33 / 8.5
+     + no genre match: jazz (+0.00)
+     + no mood match: relaxed (+0.00)
+     + energy 0.37 vs target 0.00 (+0.36)
+     + valence 0.71 vs target 1.00 (+0.52)
+     + acousticness 0.89, likes acoustic (+0.45)
+
+
+```
+
 
 ---
 
