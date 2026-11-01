@@ -719,28 +719,33 @@ between the original weights and these.
 
 ## Limitations and Risks
 
-Summarize some limitations of your recommender.
+- **Tiny catalog:** only 20 songs, and most genres have just 1 song.
+- **Labels and sound are weighted almost equally** (4.5 vs. 4.0 points), so one
+  group can override the other. A blues/sad fan who wants loud music gets a
+  quiet song at #1, and a rock fan who wants chill music gets no rock at all.
+- **Unknown genres and moods fail silently:** "k-pop" or "calm" just match
+  nothing, with no warning to the user.
 
-Examples:
-
-- It only works on a tiny catalog
-- It does not understand lyrics or language
-- It might over favor one genre or mood
-
-You will go deeper on this in your model card.
+See the [Model Card](model_card.md) for full details.
 
 ---
 
 ## Reflection
 
-Read and complete `model_card.md`:
 
-[**Model Card**](model_card.md)
+This project showed me that a recommender turns data into predictions with
+nothing more than a scoring rule (how well does one song fit?) and a ranking
+rule (which songs make the final list?). Every recommendation in my system can
+be traced back to exact points for genre, mood, energy, valence, and
+acousticness, which made it easy to see *why* something was suggested, and
+also why it was sometimes wrong.
 
-Write 1 to 2 paragraphs here about what you learned:
-
-- about how recommenders turn data into predictions
-- about where bias or unfairness could show up in systems like this
-
+Bias showed up in places I didn't design for on purpose: lofi listeners get
+more good matches simply because the catalog has more lofi songs, a fan of a
+genre that isn't in the catalog gets confident-looking results with no warning,
+and a user's favorite genre can disappear entirely if their other preferences
+point elsewhere. Real platforms work with millions of songs and users, but the
+same question applies: whose preferences does the system weight most, and who
+gets left out? Full details are in the [Model Card](model_card.md).
 
 

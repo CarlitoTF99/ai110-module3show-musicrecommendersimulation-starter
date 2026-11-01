@@ -1,24 +1,44 @@
 # 🎧 Model Card: Music Recommender Simulation
 
-## 1. Model Name  
+## 1. Model Name
 
 **VibeMatch 1.0**, a content-based music recommender simulation.
 
 ---
 
-## 2. Intended Use  
+## 2. Goal / Task
 
-Describe what your recommender is designed to do and who it is for. 
-
-Prompts:  
-
-- What kind of recommendations does it generate  
-- What assumptions does it make about the user  
-- Is this for real users or classroom exploration  
+VibeMatch suggests the top 5 songs from a 20-song catalog that best fit one
+listener. The listener describes their taste with a favorite genre, a mood, how
+energetic and how positive they want the music to be, and whether they like
+acoustic songs. Every song gets a score out of 8.5, and each recommendation
+comes with the reasons behind its score.
 
 ---
 
-## 3. How the Model Works
+## 3. Data Used
+
+- **20 songs.** The starter catalog had 10, and I added 10 more to cover
+  missing genres and moods.
+- **17 genres:** lofi (3 songs), pop (2), and 1 song each for rock, metal,
+  indie pop, ambient, jazz, blues, synthwave, electronic, folk, country,
+  hip-hop, r&b, classical, reggae and latin.
+- **16 moods:** chill (3 songs), happy (2), intense (2), and 1 song each for
+  relaxed, focused, moody, sad, melancholy, angry, dramatic, confident,
+  energetic, hopeful, carefree, romantic and nostalgic.
+- **5 scored features:** genre, mood, energy, valence and acousticness.
+- **2 unscored features:** tempo_bpm and danceability. They're in the data, but
+  in this catalog they move almost exactly with energy, so scoring them would
+  count the same thing twice.
+- **Limits:**
+  - Most genres have only 1 song, so most fans get one match or none.
+  - Lofi is over-represented: 3 songs plus 2 related genres (jazz, ambient).
+  - No lyrics, language, popularity or listening history.
+  - The songs and artists are made up, not real tracks.
+
+---
+
+## 4. Algorithm Summary
 
 VibeMatch looks at every song in the catalog, gives each one a score out of
 8.5 points based on how well it fits what the listener asked for, and then
@@ -62,32 +82,7 @@ scoring them would count the same thing several times.
 
 ---
 
-## 4. Data  
-
-Describe the dataset the model uses.  
-
-Prompts:  
-
-- How many songs are in the catalog  
-- What genres or moods are represented  
-- Did you add or remove data  
-- Are there parts of musical taste missing in the dataset  
-
----
-
-## 5. Strengths  
-
-Where does your system seem to work well  
-
-Prompts:  
-
-- User types for which it gives reasonable results  
-- Any patterns you think your scoring captures correctly  
-- Cases where the recommendations matched your intuition  
-
----
-
-## 6. Limitations and Bias 
+## 5. Observed Behavior / Biases
 
 The biggest weakness is that label points (genre + mood, up to 4.5) and sound
 points (energy, valence and acousticness, up to 4.0) are almost equal, so
@@ -125,9 +120,20 @@ Other biases I found:
   Thoughts and Coffee Shop Stories three times each. Meanwhile Hollow Porch
   Light, Velvet Hours and Dust Road Letters never appear at all.
 
+### What works well
+
+- **Normal profiles get sensible lists.** All 5 of Chill Lofi's songs are
+  calm and quiet (energy 0.28–0.42, moods chill, focused or relaxed), and each
+  normal profile gets a different, near-perfect #1 (8.33–8.37 out of 8.5).
+- **The reasons always add up.** Every recommendation lists where its points
+  came from, and those points add up to the score exactly (checked for all 140
+  song/profile pairs).
+- **Results are the same every run.** There's no randomness, and ties are broken
+  the same way every time, so the same profile always gets the same list.
+
 ---
 
-## 7. Evaluation  
+## 6. Evaluation Process
 
 ### Profiles tested
 
@@ -244,25 +250,64 @@ decide" to "energy decides".
 
 ---
 
-## 8. Future Work  
+## 7. Intended Use and Non-Intended Use
 
-Ideas for how you would improve the model next.  
+**Intended use:**
+- Classroom exploration of how content-based recommenders work.
+- Experimenting with the weights and seeing how the rankings change.
+- Explaining recommendations, since every score comes with its reasons.
 
-Prompts:  
-
-- Additional features or preferences  
-- Better ways to explain recommendations  
-- Improving diversity among the top results  
-- Handling more complex user tastes  
+**Not intended for:**
+- Real users or real music catalogs.
+- Making decisions about artists, like who gets promoted.
+- Listeners whose taste can't be described as one genre and one mood.
+- Anything that needs listening history or fairness guarantees.
 
 ---
 
-## 9. Personal Reflection  
+## 8. Ideas for Improvement
 
-A few sentences about your experience.  
+- **Add a diversity rule to the ranking step** (for example, at most one song
+  per artist in the top 5). This would break up filter bubbles, like the same
+  LoRoom songs or the same few songs filling every list.
+- **Let listeners pick several favorite genres with weights, plus dislikes.**
+  This would fix the "rock fan gets no rock" problem, because a listener could
+  say rock matters more than mood, and dislikes could push out songs from
+  genres they never want.
+- **Warn the user when their genre or mood isn't in the catalog.** Right now
+  "k-pop" or "calm" just matches nothing, and the user never finds out why the
+  results look off.
 
-Prompts:  
+---
 
-- What you learned about recommender systems  
-- Something unexpected or interesting you discovered  
-- How this changed the way you think about music recommendation apps  
+## 9. Personal Reflection
+
+**Biggest learning moment:** Running the edge-case profiles. I expected the
+system to break on weird inputs, but it didn't crash. It just quietly gave bad
+answers. A "rock fan" who also wanted chill, acoustic music got zero rock songs,
+and a "sad banger" listener got a quiet blues song as their #1. That's when I
+understood that a recommender is just weights, and the weights decide whose
+preferences win. Label points and sound points were almost equal in my design,
+so whichever group agreed with itself took over.
+
+**How AI helped, and when I had to double-check it:** AI helped me analyze the
+dataset (it found that energy, tempo, and acousticness were nearly the same
+signal), test weight options before writing code, and suggest edge-case
+profiles I wouldn't have thought of. But I had to check its work. It caught
+my own typo (`target_valence: 40` instead of `0.40`), and I caught it giving
+two different acousticness rules in my README. My first "rock" profile also
+contradicted itself, and I only noticed because the AI's predicted scores
+looked wrong. I verified the scoring by doing two songs by hand (Library Rain
+8.37, Storm Runner 1.38) and confirming the code matched exactly.
+
+**What surprised me:** How much a few simple rules feel like a real
+recommendation. Five "if this matches, add points" checks and a sort produced
+lists that mostly felt right, like all-calm songs for a study playlist. It also
+surprised me how one song, Fuego en la Plaza, kept showing up for very
+different listeners, just because it's high-energy and happy and the catalog
+is small.
+
+**What I'd try next:** Add an artist/genre diversity rule so the top 5 aren't
+dominated by one style, let users list several genres and dislikes, and test
+with a much bigger, more balanced catalog to see whether the biases I found
+shrink or just change shape.
