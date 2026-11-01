@@ -1,21 +1,21 @@
-id,title,artist,genre,mood,energy,tempo_bpm,valence,danceability,acousticness
-1,Sunrise City,Neon Echo,pop,happy,0.82,118,0.84,0.79,0.18
-2,Midnight Coding,LoRoom,lofi,chill,0.42,78,0.56,0.62,0.71
-3,Storm Runner,Voltline,rock,intense,0.91,152,0.48,0.66,0.10
-4,Library Rain,Paper Lanterns,lofi,chill,0.35,72,0.60,0.58,0.86
-5,Gym Hero,Max Pulse,pop,intense,0.93,132,0.77,0.88,0.05
-6,Spacewalk Thoughts,Orbit Bloom,ambient,chill,0.28,60,0.65,0.41,0.92
-7,Coffee Shop Stories,Slow Stereo,jazz,relaxed,0.37,90,0.71,0.54,0.89
-8,Night Drive Loop,Neon Echo,synthwave,moody,0.75,110,0.49,0.73,0.22
-9,Focus Flow,LoRoom,lofi,focused,0.40,80,0.59,0.60,0.78
-10,Rooftop Lights,Indigo Parade,indie pop,happy,0.76,124,0.81,0.82,0.35
-11,Hollow Porch Light,Wren & Willow,folk,nostalgic,0.68,168,0.58,0.52,0.93
-12,Rust in the Rain,Delta Marrow,blues,sad,0.33,64,0.22,0.38,0.78
-13,Ironclad Fury,Grave Circuit,metal,angry,0.97,184,0.18,0.42,0.03
-14,Velvet Hours,Sienna Cole,r&b,romantic,0.52,84,0.66,0.74,0.32
-15,Afterglow Static,Kaito Mere,electronic,melancholy,0.30,70,0.28,0.48,0.08
-16,Concrete Psalms,Verse Theory,hip-hop,confident,0.80,94,0.62,0.86,0.12
-17,Dust Road Letters,June Harlan,country,hopeful,0.58,102,0.70,0.60,0.74
-18,Tempest Overture,Varga Chamber Ensemble,classical,dramatic,0.72,140,0.30,0.20,0.95
-19,Island Slowdown,Roots Harbor,reggae,carefree,0.55,76,0.85,0.80,0.40
-20,Fuego en la Plaza,Los Faroles,latin,energetic,0.86,176,0.88,0.83,0.45
+id,title,artist,genre,mood,energy,tempo_bpm,valence,danceability,acousticness,popularity,release_decade,mood_tags,instrumentalness,lyrics_language
+1,Sunrise City,Neon Echo,pop,happy,0.82,118,0.84,0.79,0.18,82,2010,euphoric;uplifting;sunny,0.02,english
+2,Midnight Coding,LoRoom,lofi,chill,0.42,78,0.56,0.62,0.71,41,2020,dreamy;late-night;focused,0.88,instrumental
+3,Storm Runner,Voltline,rock,intense,0.91,152,0.48,0.66,0.10,67,2000,aggressive;adrenaline;defiant,0.10,english
+4,Library Rain,Paper Lanterns,lofi,chill,0.35,72,0.60,0.58,0.86,38,2020,rainy;cozy;dreamy,0.92,instrumental
+5,Gym Hero,Max Pulse,pop,intense,0.93,132,0.77,0.88,0.05,74,2010,pumped;adrenaline;confident,0.05,english
+6,Spacewalk Thoughts,Orbit Bloom,ambient,chill,0.28,60,0.65,0.41,0.92,29,2010,dreamy;spacious;serene,0.95,instrumental
+7,Coffee Shop Stories,Slow Stereo,jazz,relaxed,0.37,90,0.71,0.54,0.89,45,1960,cozy;warm;nostalgic,0.70,instrumental
+8,Night Drive Loop,Neon Echo,synthwave,moody,0.75,110,0.49,0.73,0.22,58,1980,nostalgic;late-night;brooding,0.45,english
+9,Focus Flow,LoRoom,lofi,focused,0.40,80,0.59,0.60,0.78,36,2020,focused;calm;steady,0.90,instrumental
+10,Rooftop Lights,Indigo Parade,indie pop,happy,0.76,124,0.81,0.82,0.35,63,2010,euphoric;carefree;summery,0.08,english
+11,Hollow Porch Light,Wren & Willow,folk,nostalgic,0.68,168,0.58,0.52,0.93,34,1970,nostalgic;wistful;warm,0.12,english
+12,Rust in the Rain,Delta Marrow,blues,sad,0.33,64,0.22,0.38,0.78,27,1950,heartbroken;lonely;rainy,0.15,english
+13,Ironclad Fury,Grave Circuit,metal,angry,0.97,184,0.18,0.42,0.03,49,1990,aggressive;furious;dark,0.20,english
+14,Velvet Hours,Sienna Cole,r&b,romantic,0.52,84,0.66,0.74,0.32,71,1990,sensual;warm;late-night,0.03,english
+15,Afterglow Static,Kaito Mere,electronic,melancholy,0.30,70,0.28,0.48,0.08,44,2000,wistful;nostalgic;hazy,0.80,instrumental
+16,Concrete Psalms,Verse Theory,hip-hop,confident,0.80,94,0.62,0.86,0.12,69,1990,defiant;gritty;confident,0.01,english
+17,Dust Road Letters,June Harlan,country,hopeful,0.58,102,0.70,0.60,0.74,52,1980,nostalgic;hopeful;homesick,0.06,english
+18,Tempest Overture,Varga Chamber Ensemble,classical,dramatic,0.72,140,0.30,0.20,0.95,31,1960,epic;stormy;dramatic,0.98,instrumental
+19,Island Slowdown,Roots Harbor,reggae,carefree,0.55,76,0.85,0.80,0.40,55,1970,sunny;laid-back;carefree,0.30,english
+20,Fuego en la Plaza,Los Faroles,latin,energetic,0.86,176,0.88,0.83,0.45,78,2010,festive;euphoric;passionate,0.04,spanish

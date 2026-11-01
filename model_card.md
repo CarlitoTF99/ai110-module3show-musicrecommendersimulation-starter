@@ -30,10 +30,21 @@ comes with the reasons behind its score.
 - **2 unscored features:** tempo_bpm and danceability. They're in the data, but
   in this catalog they move almost exactly with energy, so scoring them would
   count the same thing twice.
+- **5 advanced features (stretch, opt-in):** these only earn points when a
+  listener's profile asks for them.
+  - *popularity* (0–100): how well-known the song is.
+  - *release_decade* (e.g. 1970, 2010): when it came out.
+  - *mood_tags* (e.g. "nostalgic;wistful;warm"): more detailed moods than the
+    single mood label, 3 per song.
+  - *instrumentalness* (0–1): how much of the song has no vocals.
+  - *lyrics_language*: english (12 songs), instrumental (7) or spanish (1).
 - **Limits:**
   - Most genres have only 1 song, so most fans get one match or none.
   - Lofi is over-represented: 3 songs plus 2 related genres (jazz, ambient).
-  - No lyrics, language, popularity or listening history.
+  - No lyrics or listening history. The popularity, decade, tag and language
+    values are made up by me, not measured.
+  - Only one non-English song, so a language preference other than English or
+    instrumental can match at most 1 song.
   - The songs and artists are made up, not real tracks.
 
 ---
@@ -119,6 +130,20 @@ Other biases I found:
   is in the top 5 four times, and Gym Hero, Island Slowdown, Spacewalk
   Thoughts and Coffee Shop Stories three times each. Meanwhile Hollow Porch
   Light, Velvet Hours and Dust Road Letters never appear at all.
+
+### Fairness: diversity penalty
+
+The optional `--diverse` re-rank fights filter bubbles by taking points away
+from a song whose artist is already in the list (−1.50) or whose genre already
+appears twice (−0.75), so one artist or style can't fill the whole top 5. In
+Chill Lofi, LoRoom's Focus Flow is the second LoRoom song and the third lofi
+song, so it drops from #3 (7.39) to #5 (5.14), and Spacewalk Thoughts (ambient)
+and Coffee Shop Stories (jazz) move up to #3 and #4. The trade-off is that a
+song that matches the listener better can be pushed below one that matches
+worse: Focus Flow actually fits Chill Lofi better than both of those songs
+before the penalty. In this small catalog the penalty only reorders the list,
+because no other song scores above 3.26 for this listener, so LoRoom still
+appears twice.
 
 ### What works well
 

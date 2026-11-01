@@ -730,6 +730,387 @@ See the [Model Card](model_card.md) for full details.
 
 ---
 
+## Stretch Features
+
+Every stretch feature is opt-in. Running `python -m src.main` with no flags
+gives the same scores and rankings as before for the 7 original profiles; the
+only additions are a `mode=balanced` line in each header and the new
+"Nostalgic Explorer (advanced)" profile at the end. Flags can be combined, for
+example `python -m src.main --table --mode mood-first --diverse`.
+
+### 1. Advanced song features
+
+`data/songs.csv` has 5 new columns for every song: `popularity` (0-100),
+`release_decade` (e.g. 1970), `mood_tags` (semicolon-separated, e.g.
+`nostalgic;wistful;warm`), `instrumentalness` (0-1) and `lyrics_language`
+(english, spanish or instrumental). A profile can use 5 new optional keys:
+
+| Key | How it scores | Max points |
+|---|---|---|
+| `target_popularity` | closeness (same bell curve as energy), popularity scaled to 0-1 | 0.5 |
+| `preferred_decade` | full points for the same decade, half for +/-10 years | 0.75 |
+| `mood_tags` | 0.35 per shared tag, capped | 1.0 |
+| `target_instrumentalness` | closeness (bell curve) | 0.75 |
+| `preferred_language` | exact match | 0.5 |
+
+If a profile doesn't use a key, that feature adds no points, no reason line,
+and doesn't count toward the max score. That's why the original profiles are
+still scored out of 8.5 while "Nostalgic Explorer (advanced)", which uses all
+5 keys, is scored out of 12.
+
+Run: `python -m src.main` (the advanced profile is printed last)
+
+```text
+######################################################
+PROFILE: Nostalgic Explorer (advanced)
+genre=folk | mood=nostalgic | energy=0.55 | valence=0.55 | acoustic=yes
+target_popularity=40 | preferred_decade=1970 | mood_tags=nostalgic;warm;wistful | target_instrumentalness=0.15 | preferred_language=english
+mode=balanced
+######################################################
+
+Top 5 recommendations
+======================================================
+1. Hollow Porch Light - Wren & Willow          Score: 11.54 / 12
+     + genre match: folk (+2.50)
+     + mood match: nostalgic (+2.00)
+     + energy 0.68 vs target 0.55 (+1.62)
+     + valence 0.58 vs target 0.55 (+1.48)
+     + acousticness 0.93, likes acoustic (+0.47)
+     + popularity 34 vs target 40 (+0.48)
+     + decade match: 1970s (+0.75)
+     + mood tags: nostalgic, wistful, warm (+1.00)
+     + instrumentalness 0.12 vs target 0.15 (+0.74)
+     + language match: english (+0.50)
+------------------------------------------------------
+2. Dust Road Letters - June Harlan             Score: 7.06 / 12
+     + related genre: country ~ folk (+1.25)
+     + no mood match: hopeful (+0.00)
+     + energy 0.58 vs target 0.55 (+1.98)
+     + valence 0.70 vs target 0.55 (+1.13)
+     + acousticness 0.74, likes acoustic (+0.37)
+     + popularity 52 vs target 40 (+0.42)
+     + near decade: 1980s ~ 1970s (+0.38)
+     + mood tags: nostalgic (+0.35)
+     + instrumentalness 0.06 vs target 0.15 (+0.68)
+     + language match: english (+0.50)
+------------------------------------------------------
+3. Velvet Hours - Sienna Cole                  Score: 5.06 / 12
+     + no genre match: r&b (+0.00)
+     + no mood match: romantic (+0.00)
+     + energy 0.52 vs target 0.55 (+1.98)
+     + valence 0.66 vs target 0.55 (+1.29)
+     + acousticness 0.32, likes acoustic (+0.16)
+     + popularity 71 vs target 40 (+0.15)
+     + no decade match: 1990s (+0.00)
+     + mood tags: warm (+0.35)
+     + instrumentalness 0.03 vs target 0.15 (+0.63)
+     + language match: english (+0.50)
+------------------------------------------------------
+4. Island Slowdown - Roots Harbor              Score: 4.89 / 12
+     + no genre match: reggae (+0.00)
+     + no mood match: carefree (+0.00)
+     + energy 0.55 vs target 0.55 (+2.00)
+     + valence 0.85 vs target 0.55 (+0.49)
+     + acousticness 0.40, likes acoustic (+0.20)
+     + popularity 55 vs target 40 (+0.38)
+     + decade match: 1970s (+0.75)
+     + no mood tag overlap (+0.00)
+     + instrumentalness 0.30 vs target 0.15 (+0.57)
+     + language match: english (+0.50)
+------------------------------------------------------
+5. Night Drive Loop - Neon Echo                Score: 4.55 / 12
+     + no genre match: synthwave (+0.00)
+     + no mood match: moody (+0.00)
+     + energy 0.75 vs target 0.55 (+1.21)
+     + valence 0.49 vs target 0.55 (+1.43)
+     + acousticness 0.22, likes acoustic (+0.11)
+     + popularity 58 vs target 40 (+0.33)
+     + near decade: 1980s ~ 1970s (+0.38)
+     + mood tags: nostalgic (+0.35)
+     + instrumentalness 0.45 vs target 0.15 (+0.24)
+     + language match: english (+0.50)
+```
+
+### 2. Scoring modes (Strategy pattern)
+
+`--mode` picks a ranking strategy: `balanced` (default, the original
+weights), `genre-first`, `mood-first` or `energy-focused`. Each mode is just a
+different set of weights (a `ScoringWeights` object in `SCORING_MODES`), and
+`score_song` is the only place that scores. All modes keep the same 8.5-point
+ceiling so scores stay comparable.
+
+| Mode | Genre (exact / related) | Mood (exact / family) | Energy | Valence | Acoustic |
+|---|---|---|---|---|---|
+| balanced | 2.5 / 1.25 | 2.0 / 1.0 | 2.0 | 1.5 | 0.5 |
+| genre-first | 4.0 / 2.0 | 1.5 / 0.75 | 1.5 | 1.0 | 0.5 |
+| mood-first | 1.5 / 0.75 | 3.5 / 1.75 | 1.5 | 1.5 | 0.5 |
+| energy-focused | 1.5 / 0.75 | 1.5 / 0.75 | 4.0 | 1.0 | 0.5 |
+
+Run: `python -m src.main --mode mood-first`
+
+**Balanced (default):**
+
+```text
+######################################################
+PROFILE: Sad Banger (edge case)
+genre=blues | mood=sad | energy=0.90 | valence=0.20 | acoustic=no
+mode=balanced
+######################################################
+
+Top 5 recommendations
+======================================================
+1. Rust in the Rain - Delta Marrow             Score: 6.13 / 8.5
+     + genre match: blues (+2.50)
+     + mood match: sad (+2.00)
+     + energy 0.33 vs target 0.90 (+0.03)
+     + valence 0.22 vs target 0.20 (+1.49)
+     + acousticness 0.78, prefers non-acoustic (+0.11)
+------------------------------------------------------
+2. Ironclad Fury - Grave Circuit               Score: 3.85 / 8.5
+     + no genre match: metal (+0.00)
+     + no mood match: angry (+0.00)
+     + energy 0.97 vs target 0.90 (+1.88)
+     + valence 0.18 vs target 0.20 (+1.49)
+     + acousticness 0.03, prefers non-acoustic (+0.48)
+------------------------------------------------------
+3. Night Drive Loop - Neon Echo                Score: 3.42 / 8.5
+     + no genre match: synthwave (+0.00)
+     + mood family match: moody ~ sad (+1.00)
+     + energy 0.75 vs target 0.90 (+1.51)
+     + valence 0.49 vs target 0.20 (+0.52)
+     + acousticness 0.22, prefers non-acoustic (+0.39)
+------------------------------------------------------
+4. Storm Runner - Voltline                     Score: 3.01 / 8.5
+     + no genre match: rock (+0.00)
+     + no mood match: intense (+0.00)
+     + energy 0.91 vs target 0.90 (+2.00)
+     + valence 0.48 vs target 0.20 (+0.56)
+     + acousticness 0.10, prefers non-acoustic (+0.45)
+------------------------------------------------------
+5. Afterglow Static - Kaito Mere               Score: 2.86 / 8.5
+     + no genre match: electronic (+0.00)
+     + mood family match: melancholy ~ sad (+1.00)
+     + energy 0.30 vs target 0.90 (+0.02)
+     + valence 0.28 vs target 0.20 (+1.38)
+     + acousticness 0.08, prefers non-acoustic (+0.46)
+```
+
+**Mood-first:**
+
+```text
+######################################################
+PROFILE: Sad Banger (edge case)
+genre=blues | mood=sad | energy=0.90 | valence=0.20 | acoustic=no
+mode=mood-first
+######################################################
+
+Top 5 recommendations
+======================================================
+1. Rust in the Rain - Delta Marrow             Score: 6.63 / 8.5
+     + genre match: blues (+1.50)
+     + mood match: sad (+3.50)
+     + energy 0.33 vs target 0.90 (+0.03)
+     + valence 0.22 vs target 0.20 (+1.49)
+     + acousticness 0.78, prefers non-acoustic (+0.11)
+------------------------------------------------------
+2. Night Drive Loop - Neon Echo                Score: 3.79 / 8.5
+     + no genre match: synthwave (+0.00)
+     + mood family match: moody ~ sad (+1.75)
+     + energy 0.75 vs target 0.90 (+1.13)
+     + valence 0.49 vs target 0.20 (+0.52)
+     + acousticness 0.22, prefers non-acoustic (+0.39)
+------------------------------------------------------
+3. Afterglow Static - Kaito Mere               Score: 3.61 / 8.5
+     + no genre match: electronic (+0.00)
+     + mood family match: melancholy ~ sad (+1.75)
+     + energy 0.30 vs target 0.90 (+0.02)
+     + valence 0.28 vs target 0.20 (+1.38)
+     + acousticness 0.08, prefers non-acoustic (+0.46)
+------------------------------------------------------
+4. Ironclad Fury - Grave Circuit               Score: 3.38 / 8.5
+     + no genre match: metal (+0.00)
+     + no mood match: angry (+0.00)
+     + energy 0.97 vs target 0.90 (+1.41)
+     + valence 0.18 vs target 0.20 (+1.49)
+     + acousticness 0.03, prefers non-acoustic (+0.48)
+------------------------------------------------------
+5. Storm Runner - Voltline                     Score: 2.51 / 8.5
+     + no genre match: rock (+0.00)
+     + no mood match: intense (+0.00)
+     + energy 0.91 vs target 0.90 (+1.50)
+     + valence 0.48 vs target 0.20 (+0.56)
+     + acousticness 0.10, prefers non-acoustic (+0.45)
+```
+
+**What changed:** with mood worth 3.5 points, the two "low"-mood songs (Night
+Drive Loop is moody, Afterglow Static is melancholy) move up to #2 and #3,
+and the angry, loud Ironclad Fury falls from #2 to #4 (3.85 to 3.38). Rust in
+the Rain stays #1 and gains a bigger lead (6.13 to 6.63), so this mode
+doubles down on "sad" over "loud".
+
+### 3. Diversity penalty
+
+`--diverse` re-ranks the list greedily in `recommend_songs`: it picks songs one
+at a time, and each remaining song loses 1.50 points if its artist is already
+in the list and 0.75 if its genre already appears 2 or more times. The penalty
+shows up as its own reason line, so the reasons still add up to the score.
+
+Run: `python -m src.main --diverse`
+
+**Without `--diverse`:**
+
+```text
+######################################################
+PROFILE: Chill Lofi
+genre=lofi | mood=chill | energy=0.40 | valence=0.60 | acoustic=yes
+mode=balanced
+######################################################
+
+Top 5 recommendations
+======================================================
+1. Library Rain - Paper Lanterns               Score: 8.37 / 8.5
+     + genre match: lofi (+2.50)
+     + mood match: chill (+2.00)
+     + energy 0.35 vs target 0.40 (+1.94)
+     + valence 0.60 vs target 0.60 (+1.50)
+     + acousticness 0.86, likes acoustic (+0.43)
+------------------------------------------------------
+2. Midnight Coding - LoRoom                    Score: 8.31 / 8.5
+     + genre match: lofi (+2.50)
+     + mood match: chill (+2.00)
+     + energy 0.42 vs target 0.40 (+1.99)
+     + valence 0.56 vs target 0.60 (+1.47)
+     + acousticness 0.71, likes acoustic (+0.35)
+------------------------------------------------------
+3. Focus Flow - LoRoom                         Score: 7.39 / 8.5
+     + genre match: lofi (+2.50)
+     + mood family match: focused ~ chill (+1.00)
+     + energy 0.40 vs target 0.40 (+2.00)
+     + valence 0.59 vs target 0.60 (+1.50)
+     + acousticness 0.78, likes acoustic (+0.39)
+------------------------------------------------------
+4. Spacewalk Thoughts - Orbit Bloom            Score: 6.83 / 8.5
+     + related genre: ambient ~ lofi (+1.25)
+     + mood match: chill (+2.00)
+     + energy 0.28 vs target 0.40 (+1.67)
+     + valence 0.65 vs target 0.60 (+1.45)
+     + acousticness 0.92, likes acoustic (+0.46)
+------------------------------------------------------
+5. Coffee Shop Stories - Slow Stereo           Score: 5.97 / 8.5
+     + related genre: jazz ~ lofi (+1.25)
+     + mood family match: relaxed ~ chill (+1.00)
+     + energy 0.37 vs target 0.40 (+1.98)
+     + valence 0.71 vs target 0.60 (+1.29)
+     + acousticness 0.89, likes acoustic (+0.45)
+```
+
+**With `--diverse`:**
+
+```text
+######################################################
+PROFILE: Chill Lofi
+genre=lofi | mood=chill | energy=0.40 | valence=0.60 | acoustic=yes
+mode=balanced | diversity=on
+######################################################
+
+Top 5 recommendations
+======================================================
+1. Library Rain - Paper Lanterns               Score: 8.37 / 8.5
+     + genre match: lofi (+2.50)
+     + mood match: chill (+2.00)
+     + energy 0.35 vs target 0.40 (+1.94)
+     + valence 0.60 vs target 0.60 (+1.50)
+     + acousticness 0.86, likes acoustic (+0.43)
+------------------------------------------------------
+2. Midnight Coding - LoRoom                    Score: 8.31 / 8.5
+     + genre match: lofi (+2.50)
+     + mood match: chill (+2.00)
+     + energy 0.42 vs target 0.40 (+1.99)
+     + valence 0.56 vs target 0.60 (+1.47)
+     + acousticness 0.71, likes acoustic (+0.35)
+------------------------------------------------------
+3. Spacewalk Thoughts - Orbit Bloom            Score: 6.83 / 8.5
+     + related genre: ambient ~ lofi (+1.25)
+     + mood match: chill (+2.00)
+     + energy 0.28 vs target 0.40 (+1.67)
+     + valence 0.65 vs target 0.60 (+1.45)
+     + acousticness 0.92, likes acoustic (+0.46)
+------------------------------------------------------
+4. Coffee Shop Stories - Slow Stereo           Score: 5.97 / 8.5
+     + related genre: jazz ~ lofi (+1.25)
+     + mood family match: relaxed ~ chill (+1.00)
+     + energy 0.37 vs target 0.40 (+1.98)
+     + valence 0.71 vs target 0.60 (+1.29)
+     + acousticness 0.89, likes acoustic (+0.45)
+------------------------------------------------------
+5. Focus Flow - LoRoom                         Score: 5.14 / 8.5
+     + genre match: lofi (+2.50)
+     + mood family match: focused ~ chill (+1.00)
+     + energy 0.40 vs target 0.40 (+2.00)
+     + valence 0.59 vs target 0.60 (+1.50)
+     + acousticness 0.78, likes acoustic (+0.39)
+     + diversity penalty: artist LoRoom already in list (-1.50)
+     + diversity penalty: genre lofi already appears 2 times (-0.75)
+```
+
+Focus Flow is the second LoRoom song and the third lofi song, so it loses 2.25
+points and drops from #3 to #5. It still makes the list, because the next-best
+song in the catalog (Velvet Hours) only scores 3.26. The penalty pushes
+repeats down, but it doesn't remove them when the catalog has nothing better.
+
+### 4. Summary table
+
+`--table` prints each top-5 list as a plain-ASCII grid (using `tabulate`) with
+one row per song and every reason line inside the Reasons cell. Without
+`--table` the output is unchanged.
+
+Run: `python -m src.main --table`
+
+```text
+######################################################
+PROFILE: High-Energy Pop
+genre=pop | mood=happy | energy=0.80 | valence=0.80 | acoustic=no
+mode=balanced
+######################################################
+
+Top 5 recommendations
++--------+-------------------+---------------+------------+-------------------------------------------------+
+|   Rank | Title             | Artist        | Score      | Reasons                                         |
++========+===================+===============+============+=================================================+
+|      1 | Sunrise City      | Neon Echo     | 8.37 / 8.5 | genre match: pop (+2.50)                        |
+|        |                   |               |            | mood match: happy (+2.00)                       |
+|        |                   |               |            | energy 0.82 vs target 0.80 (+1.99)              |
+|        |                   |               |            | valence 0.84 vs target 0.80 (+1.47)             |
+|        |                   |               |            | acousticness 0.18, prefers non-acoustic (+0.41) |
++--------+-------------------+---------------+------------+-------------------------------------------------+
+|      2 | Rooftop Lights    | Indigo Parade | 7.04 / 8.5 | related genre: indie pop ~ pop (+1.25)          |
+|        |                   |               |            | mood match: happy (+2.00)                       |
+|        |                   |               |            | energy 0.76 vs target 0.80 (+1.96)              |
+|        |                   |               |            | valence 0.81 vs target 0.80 (+1.50)             |
+|        |                   |               |            | acousticness 0.35, prefers non-acoustic (+0.33) |
++--------+-------------------+---------------+------------+-------------------------------------------------+
+|      3 | Gym Hero          | Max Pulse     | 6.07 / 8.5 | genre match: pop (+2.50)                        |
+|        |                   |               |            | no mood match: intense (+0.00)                  |
+|        |                   |               |            | energy 0.93 vs target 0.80 (+1.62)              |
+|        |                   |               |            | valence 0.77 vs target 0.80 (+1.48)             |
+|        |                   |               |            | acousticness 0.05, prefers non-acoustic (+0.47) |
++--------+-------------------+---------------+------------+-------------------------------------------------+
+|      4 | Island Slowdown   | Roots Harbor  | 3.67 / 8.5 | no genre match: reggae (+0.00)                  |
+|        |                   |               |            | mood family match: carefree ~ happy (+1.00)     |
+|        |                   |               |            | energy 0.55 vs target 0.80 (+0.92)              |
+|        |                   |               |            | valence 0.85 vs target 0.80 (+1.45)             |
+|        |                   |               |            | acousticness 0.40, prefers non-acoustic (+0.30) |
++--------+-------------------+---------------+------------+-------------------------------------------------+
+|      5 | Fuego en la Plaza | Los Faroles   | 3.57 / 8.5 | no genre match: latin (+0.00)                   |
+|        |                   |               |            | no mood match: energetic (+0.00)                |
+|        |                   |               |            | energy 0.86 vs target 0.80 (+1.91)              |
+|        |                   |               |            | valence 0.88 vs target 0.80 (+1.38)             |
+|        |                   |               |            | acousticness 0.45, prefers non-acoustic (+0.28) |
++--------+-------------------+---------------+------------+-------------------------------------------------+
+```
+
+---
+
 ## Reflection
 
 

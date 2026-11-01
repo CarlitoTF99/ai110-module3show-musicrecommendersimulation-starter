@@ -1,7 +1,7 @@
 import csv
 import math
 from typing import List, Dict, Tuple, Optional
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 
 # --- Scoring recipe (max score is MAX_SCORE below) ---
 GENRE_EXACT_POINTS = 2.5
@@ -14,6 +14,65 @@ ACOUSTIC_WEIGHT = 0.5
 SIGMA = 0.20
 
 MAX_SCORE = GENRE_EXACT_POINTS + MOOD_EXACT_POINTS + ENERGY_WEIGHT + VALENCE_WEIGHT + ACOUSTIC_WEIGHT
+
+# --- Advanced features (opt-in: each only counts when its user_prefs key is present) ---
+POPULARITY_WEIGHT = 0.5
+DECADE_EXACT_POINTS = 0.75
+DECADE_NEAR_POINTS = 0.375   # release decade within +/-10 years
+MOOD_TAG_POINTS = 0.35       # per overlapping tag
+MOOD_TAGS_MAX_POINTS = 1.0
+INSTRUMENTALNESS_WEIGHT = 0.75
+LANGUAGE_POINTS = 0.5
+
+# --- Diversity re-rank (opt-in, applied in recommend_songs, not score_song) ---
+ARTIST_REPEAT_PENALTY = 1.5
+GENRE_REPEAT_PENALTY = 0.75
+GENRE_REPEAT_LIMIT = 2       # penalize once the genre already appears this many times
+
+
+@dataclass(frozen=True)
+class ScoringWeights:
+    """A ranking strategy: the weights score_song uses. Modes differ only in these numbers."""
+    genre_exact: float
+    genre_related: float
+    mood_exact: float
+    mood_family: float
+    energy: float
+    valence: float
+    acoustic: float
+
+    @property
+    def max_score(self) -> float:
+        """Return the best possible score from the five core features."""
+        return self.genre_exact + self.mood_exact + self.energy + self.valence + self.acoustic
+
+
+DEFAULT_MODE = "balanced"
+
+# Every mode keeps the same 8.5-point ceiling so scores stay comparable across modes
+SCORING_MODES = {
+    "balanced": ScoringWeights(
+        genre_exact=GENRE_EXACT_POINTS,
+        genre_related=GENRE_RELATED_POINTS,
+        mood_exact=MOOD_EXACT_POINTS,
+        mood_family=MOOD_FAMILY_POINTS,
+        energy=ENERGY_WEIGHT,
+        valence=VALENCE_WEIGHT,
+        acoustic=ACOUSTIC_WEIGHT,
+    ),
+    "genre-first": ScoringWeights(
+        genre_exact=4.0, genre_related=2.0, mood_exact=1.5, mood_family=0.75,
+        energy=1.5, valence=1.0, acoustic=0.5,
+    ),
+    "mood-first": ScoringWeights(
+        genre_exact=1.5, genre_related=0.75, mood_exact=3.5, mood_family=1.75,
+        energy=1.5, valence=1.5, acoustic=0.5,
+    ),
+    "energy-focused": ScoringWeights(
+        genre_exact=1.5, genre_related=0.75, mood_exact=1.5, mood_family=0.75,
+        energy=4.0, valence=1.0, acoustic=0.5,
+    ),
+}
 
 DEFAULT_TARGET_VALENCE = 0.6
 DEFAULT_LIKES_ACOUSTIC = False
@@ -58,6 +117,11 @@ class Song:
     valence: float
     danceability: float
     acousticness: float
+    popularity: int = 50
+    release_decade: int = 2020
+    mood_tags: List[str] = field(default_factory=list)
+    instrumentalness: float = 0.0
+    lyrics_language: str = "english"
 
 @dataclass
 class UserProfile:
@@ -94,8 +158,8 @@ class Recommender:
 
 def load_songs(csv_path: str) -> List[Dict]:
     """Load songs from a CSV file into dicts, converting numeric columns and raising ValueError on bad rows."""
-    int_fields = {"id"}
-    float_fields = {"energy", "tempo_bpm", "valence", "danceability", "acousticness"}
+    int_fields = {"id", "popularity", "release_decade"}
+    float_fields = {"energy", "tempo_bpm", "valence", "danceability", "acousticness", "instrumentalness"}
 
     songs = []
     with open(csv_path, encoding="utf-8", newline="") as f:
@@ -115,14 +179,17 @@ def load_songs(csv_path: str) -> List[Dict]:
                         raise ValueError(
                             f"Row {line}: non-numeric value {value!r} in column '{key}'"
                         ) from None
+                elif key == "mood_tags":
+                    song[key] = _parse_tags(value)
                 else:
                     # title, artist, genre, mood (and any extra columns) stay strings
                     song[key] = value
             songs.append(song)
     return songs
 
-def score_song(user_prefs: Dict, song: Dict) -> Tuple[float, List[str]]:
-    """Score one song against a user's preferences and return (score, reasons)."""
+def score_song(user_prefs: Dict, song: Dict, mode: str = DEFAULT_MODE) -> Tuple[float, List[str]]:
+    """Score one song against a user's preferences with the given mode's weights and return (score, reasons)."""
+    weights = _weights_for(mode)
     fav_genre = user_prefs["favorite_genre"].strip().lower()
     fav_mood = user_prefs["favorite_mood"].strip().lower()
     target_energy = _check_unit_range("target_energy", user_prefs["target_energy"])
@@ -138,39 +205,41 @@ def score_song(user_prefs: Dict, song: Dict) -> Tuple[float, List[str]]:
     parts = []
 
     if song_genre == fav_genre:
-        parts.append((GENRE_EXACT_POINTS, f"genre match: {song_genre}"))
+        parts.append((weights.genre_exact, f"genre match: {song_genre}"))
     elif _genres_related(song_genre, fav_genre):
-        parts.append((GENRE_RELATED_POINTS, f"related genre: {song_genre} ~ {fav_genre}"))
+        parts.append((weights.genre_related, f"related genre: {song_genre} ~ {fav_genre}"))
     else:
         parts.append((0.0, f"no genre match: {song_genre}"))
 
     if song_mood == fav_mood:
-        parts.append((MOOD_EXACT_POINTS, f"mood match: {song_mood}"))
+        parts.append((weights.mood_exact, f"mood match: {song_mood}"))
     elif _same_mood_family(song_mood, fav_mood):
-        parts.append((MOOD_FAMILY_POINTS, f"mood family match: {song_mood} ~ {fav_mood}"))
+        parts.append((weights.mood_family, f"mood family match: {song_mood} ~ {fav_mood}"))
     else:
         parts.append((0.0, f"no mood match: {song_mood}"))
 
     energy = song["energy"]
     parts.append((
-        ENERGY_WEIGHT * _gaussian(energy - target_energy, SIGMA),
+        weights.energy * _gaussian(energy - target_energy, SIGMA),
         f"energy {energy:.2f} vs target {target_energy:.2f}",
     ))
 
     valence = song["valence"]
     parts.append((
-        VALENCE_WEIGHT * _gaussian(valence - target_valence, SIGMA),
+        weights.valence * _gaussian(valence - target_valence, SIGMA),
         f"valence {valence:.2f} vs target {target_valence:.2f}",
     ))
 
     acousticness = song["acousticness"]
     if likes_acoustic:
-        parts.append((ACOUSTIC_WEIGHT * acousticness, f"acousticness {acousticness:.2f}, likes acoustic"))
+        parts.append((weights.acoustic * acousticness, f"acousticness {acousticness:.2f}, likes acoustic"))
     else:
         parts.append((
-            ACOUSTIC_WEIGHT * (1 - acousticness),
+            weights.acoustic * (1 - acousticness),
             f"acousticness {acousticness:.2f}, prefers non-acoustic",
         ))
+
+    parts.extend(_advanced_parts(user_prefs, song))
 
     score = 0.0
     reasons = []
@@ -179,6 +248,86 @@ def score_song(user_prefs: Dict, song: Dict) -> Tuple[float, List[str]]:
         score += points
         reasons.append(f"{label} (+{points:.2f})")
     return round(score, 2), reasons
+
+
+def _advanced_parts(user_prefs: Dict, song: Dict) -> List[Tuple[float, str]]:
+    """Score the optional advanced features; a feature whose user_prefs key is absent adds nothing."""
+    parts = []
+
+    if user_prefs.get("target_popularity") is not None:
+        target = user_prefs["target_popularity"]
+        popularity = song["popularity"]
+        parts.append((
+            POPULARITY_WEIGHT * _gaussian((popularity - target) / 100, SIGMA),
+            f"popularity {popularity} vs target {target}",
+        ))
+
+    if user_prefs.get("preferred_decade") is not None:
+        target = user_prefs["preferred_decade"]
+        decade = song["release_decade"]
+        if decade == target:
+            parts.append((DECADE_EXACT_POINTS, f"decade match: {decade}s"))
+        elif abs(decade - target) == 10:
+            parts.append((DECADE_NEAR_POINTS, f"near decade: {decade}s ~ {target}s"))
+        else:
+            parts.append((0.0, f"no decade match: {decade}s"))
+
+    if user_prefs.get("mood_tags") is not None:
+        wanted = _parse_tags(user_prefs["mood_tags"])
+        shared = [tag for tag in song["mood_tags"] if tag in wanted]
+        points = min(MOOD_TAGS_MAX_POINTS, MOOD_TAG_POINTS * len(shared))
+        label = f"mood tags: {', '.join(shared)}" if shared else "no mood tag overlap"
+        parts.append((points, label))
+
+    if user_prefs.get("target_instrumentalness") is not None:
+        target = _check_unit_range("target_instrumentalness", user_prefs["target_instrumentalness"])
+        instrumentalness = song["instrumentalness"]
+        parts.append((
+            INSTRUMENTALNESS_WEIGHT * _gaussian(instrumentalness - target, SIGMA),
+            f"instrumentalness {instrumentalness:.2f} vs target {target:.2f}",
+        ))
+
+    if user_prefs.get("preferred_language") is not None:
+        target = user_prefs["preferred_language"].strip().lower()
+        language = song["lyrics_language"].strip().lower()
+        if language == target:
+            parts.append((LANGUAGE_POINTS, f"language match: {language}"))
+        else:
+            parts.append((0.0, f"no language match: {language}"))
+
+    return parts
+
+
+def max_score(user_prefs: Dict, mode: str = DEFAULT_MODE) -> float:
+    """Return the highest score possible for this user, counting only the advanced features they use."""
+    total = _weights_for(mode).max_score
+    if user_prefs.get("target_popularity") is not None:
+        total += POPULARITY_WEIGHT
+    if user_prefs.get("preferred_decade") is not None:
+        total += DECADE_EXACT_POINTS
+    if user_prefs.get("mood_tags") is not None:
+        wanted = _parse_tags(user_prefs["mood_tags"])
+        total += min(MOOD_TAGS_MAX_POINTS, MOOD_TAG_POINTS * len(wanted))
+    if user_prefs.get("target_instrumentalness") is not None:
+        total += INSTRUMENTALNESS_WEIGHT
+    if user_prefs.get("preferred_language") is not None:
+        total += LANGUAGE_POINTS
+    return round(total, 2)
+
+
+def _weights_for(mode: str) -> ScoringWeights:
+    """Return the ScoringWeights for a mode name, raising ValueError for unknown modes."""
+    try:
+        return SCORING_MODES[mode]
+    except KeyError:
+        raise ValueError(f"Unknown mode {mode!r}; choose from {', '.join(SCORING_MODES)}") from None
+
+
+def _parse_tags(value) -> List[str]:
+    """Return lowercase tags from a list or a semicolon-separated string, dropping blanks."""
+    if isinstance(value, str):
+        value = value.split(";")
+    return [tag.strip().lower() for tag in value if tag.strip()]
 
 
 def _gaussian(d: float, sigma: float) -> float:
@@ -202,21 +351,64 @@ def _check_unit_range(name: str, value: float) -> float:
         raise ValueError(f"{name} must be between 0 and 1, got {value!r}")
     return float(value)
 
-def recommend_songs(user_prefs: Dict, songs: List[Dict], k: int = 5) -> List[Tuple[Dict, float, str]]:
-    """Score every song and return the top k as (song, score, explanation), best first."""
+def recommend_songs(
+    user_prefs: Dict,
+    songs: List[Dict],
+    k: int = 5,
+    mode: str = DEFAULT_MODE,
+    diverse: bool = False,
+) -> List[Tuple[Dict, float, str]]:
+    """Score every song with the mode's weights and return the top k as (song, score, explanation), best first.
+
+    With diverse=True, songs are picked greedily and penalized for repeating an artist or genre already picked.
+    """
     if k <= 0:
         return []
 
     target_energy = user_prefs["target_energy"]
-    scored = [(song, *score_song(user_prefs, song)) for song in songs]
+    scored = [(song, *score_song(user_prefs, song, mode)) for song in songs]
 
     # Highest score first; ties go to the closer energy, then the lower id
-    ranked = sorted(
-        scored,
-        key=lambda item: (
-            -item[1],
-            abs(item[0]["energy"] - target_energy),
-            item[0]["id"],
-        ),
-    )
-    return [(song, score, "; ".join(reasons)) for song, score, reasons in ranked[:k]]
+    def rank_key(item):
+        return (-item[1], abs(item[0]["energy"] - target_energy), item[0]["id"])
+
+    if not diverse:
+        ranked = sorted(scored, key=rank_key)[:k]
+    else:
+        ranked = _diverse_rerank(scored, k, rank_key)
+    return [(song, score, "; ".join(reasons)) for song, score, reasons in ranked]
+
+
+def _diverse_rerank(scored: List[Tuple[Dict, float, List[str]]], k: int, rank_key) -> List[Tuple[Dict, float, List[str]]]:
+    """Pick k songs one at a time, re-scoring the rest with penalties for artists and genres already picked."""
+    remaining = list(scored)
+    picked = []
+    while remaining and len(picked) < k:
+        artists = {song["artist"] for song, _, _ in picked}
+        genre_counts = {}
+        for song, _, _ in picked:
+            genre_counts[song["genre"]] = genre_counts.get(song["genre"], 0) + 1
+
+        candidates = []
+        for item in remaining:
+            song, score, reasons = item
+            penalties = []
+            if song["artist"] in artists:
+                penalties.append((
+                    ARTIST_REPEAT_PENALTY,
+                    f"diversity penalty: artist {song['artist']} already in list",
+                ))
+            count = genre_counts.get(song["genre"], 0)
+            if count >= GENRE_REPEAT_LIMIT:
+                penalties.append((
+                    GENRE_REPEAT_PENALTY,
+                    f"diversity penalty: genre {song['genre']} already appears {count} times",
+                ))
+            adjusted = round(score - sum(points for points, _ in penalties), 2)
+            new_reasons = reasons + [f"{label} (-{points:.2f})" for points, label in penalties]
+            candidates.append((item, (song, adjusted, new_reasons)))
+
+        original, best = min(candidates, key=lambda pair: rank_key(pair[1]))
+        remaining = [item for item in remaining if item is not original]
+        picked.append(best)
+    return picked
