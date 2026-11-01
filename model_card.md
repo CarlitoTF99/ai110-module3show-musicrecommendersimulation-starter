@@ -89,14 +89,41 @@ Prompts:
 
 ## 6. Limitations and Bias 
 
-Where the system struggles or behaves unfairly. 
+The biggest weakness is that label points (genre + mood, up to 4.5) and sound
+points (energy, valence and acousticness, up to 4.0) are almost equal, so
+whichever group agrees with itself decides the ranking. In the Sad Banger
+profile (blues, sad, energy 0.90), Rust in the Rain wins with 6.13 because it
+matches both labels for 4.5 points, even though its energy is only 0.33. That's
+a quiet song for someone who asked for a loud one, and it earns just 0.03 of the
+2.0 energy points. The opposite happens in Acoustic Chill Rock: quiet, chill,
+acoustic songs win on mood and sound, and the only rock song (Storm Runner)
+lands at #6 with 3.80, so a rock fan gets no rock at all. Neither result is a
+bug, since the points add up exactly as designed, but the system can't tell
+which preference matters most to the listener and quietly picks one for them.
 
-Prompts:  
+Other biases I found:
 
-- Features it does not consider  
-- Genres or moods that are underrepresented  
-- Cases where the system overfits to one preference  
-- Ways the scoring might unintentionally favor some users  
+- **Genre imbalance:** lofi has 3 songs, pop has 2, and the other 15 genres
+  have 1 song each. A lofi or jazz fan has 5 songs that can earn genre points
+  (exact or related), but classical, reggae and latin fans have only 1 because
+  those genres have no related genres.
+- **Extreme energy targets are underserved:** no song has energy below 0.28,
+  and energy points drop by half once a song is 0.235 away from the target. A
+  listener who wants energy 0.0 can get at most 0.75 of 2.0 energy points,
+  which is part of why Silent Classical's #1 scores only 2.97 / 8.5.
+- **Mood and valence count the same feeling twice:** "low" moods (sad,
+  melancholy, moody) all have valence 0.22–0.49, and "bright" moods (happy,
+  carefree, hopeful) have valence 0.70–0.85. So a mood match almost always
+  comes with a valence match too. Rust in the Rain gets 2.0 + 1.49 = 3.49
+  points for being sad, while energy can never be worth more than 2.0.
+- **Silent failure for unknown labels:** "k-pop" matches no song, so the
+  highest possible score drops from 8.5 to 6.0. "calm" is the name of a mood
+  family, not a mood, so it matches nothing and Silent Classical's ceiling
+  drops to 6.5. In both cases the system shows no warning.
+- **Same songs keep appearing:** across the 7 test profiles, Fuego en la Plaza
+  is in the top 5 four times, and Gym Hero, Island Slowdown, Spacewalk
+  Thoughts and Coffee Shop Stories three times each. Meanwhile Hollow Porch
+  Light, Velvet Hours and Dust Road Letters never appear at all.
 
 ---
 
