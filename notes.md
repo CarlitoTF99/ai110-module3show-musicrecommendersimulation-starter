@@ -81,3 +81,8 @@ better-matching songs to push it out after the true matches run out.
 standard profile (Sunrise City, Library Rain, Storm Runner), so genre is not
 overpowering the system. The repetition happens lower in the lists, which
 points to the small catalog rather than the genre weight.
+
+## Weight-shift experiment (energy x2, genre x0.5) — result
+- Sad Banger flipped: Ironclad Fury 5.73 / 9.25 took #1, Rust in the Rain fell to #4 (4.92); the #1 for High-Energy Pop, Chill Lofi and Deep Intense Rock didn't change.
+- Side effects: songs with no matching labels (Storm Runner, Gym Hero, Concrete Psalms) entered top 5s on energy alone, and Tempest Overture lost #1 in Silent Classical.
+- Conclusion: it swapped "labels decide" for "energy decides"; weights restored to the original (output matches the baseline exactly), and MAX_SCORE is now computed in recommender.py.

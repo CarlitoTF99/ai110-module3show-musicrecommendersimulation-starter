@@ -3,7 +3,7 @@ import math
 from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass, asdict
 
-# --- Scoring recipe (max 8.5 points) ---
+# --- Scoring recipe (max score is MAX_SCORE below) ---
 GENRE_EXACT_POINTS = 2.5
 GENRE_RELATED_POINTS = 1.25
 MOOD_EXACT_POINTS = 2.0
@@ -12,6 +12,8 @@ ENERGY_WEIGHT = 2.0
 VALENCE_WEIGHT = 1.5
 ACOUSTIC_WEIGHT = 0.5
 SIGMA = 0.20
+
+MAX_SCORE = GENRE_EXACT_POINTS + MOOD_EXACT_POINTS + ENERGY_WEIGHT + VALENCE_WEIGHT + ACOUSTIC_WEIGHT
 
 DEFAULT_TARGET_VALENCE = 0.6
 DEFAULT_LIKES_ACOUSTIC = False

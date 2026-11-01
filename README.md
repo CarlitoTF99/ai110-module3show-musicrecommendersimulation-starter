@@ -593,6 +593,127 @@ Top 5 recommendations
 
 ```
 
+### Experiment: Weight Shift (energy x2, genre x0.5)
+
+**Change:** energy weight 2.0 → 4.0, genre weight 2.5 → 1.25 (related genre
+1.25 → 0.625). Max score went from 8.5 to 9.25. Everything else unchanged.
+
+**Hypothesis:** I expected songs that *sound* right (energy close to the
+target) to beat songs that are only *labeled* right, so Sad Banger would finally
+get a high-energy song at #1 while the standard profiles kept their #1.
+
+| Profile | #1 before | #1 after | Top 5 changes |
+|---|---|---|---|
+| High-Energy Pop | Sunrise City (8.37) | Sunrise City (9.11) | Top 3 unchanged. Island Slowdown (#4, 3.67) dropped out; Fuego en la Plaza moved #5 → #4 (5.48); Concrete Psalms entered at #5 (5.44). |
+| Chill Lofi | Library Rain (8.37) | Library Rain (9.06) | No change: same 5 songs in the same order. |
+| Deep Intense Rock | Storm Runner (8.33) | Storm Runner (9.08) | Concrete Psalms #4 → #3 (5.79) and Ironclad Fury #3 → #4 (5.68) swapped; Gym Hero (#2) and Fuego en la Plaza (#5) stayed. |
+| Sad Banger (edge case) | Rust in the Rain (6.13) | Ironclad Fury (5.73) | Rust in the Rain fell #1 → #4 (4.92); Storm Runner rose #4 → #2 (5.01); Night Drive Loop stayed #3 (4.93); Afterglow Static dropped out; Gym Hero entered at #5 (4.46). |
+| Acoustic Chill Rock (edge case) | Spacewalk Thoughts (5.76) | Spacewalk Thoughts (7.60) | No change: same 5 songs in the same order (still no rock song). |
+| Ghost Genre (edge case) | Sunrise City (5.87) | Sunrise City (7.86) | Island Slowdown (#3) dropped out; Fuego en la Plaza #4 → #3 (5.48); Concrete Psalms entered at #4 (5.44); Gym Hero stayed #5 (5.19). |
+| Silent Classical (edge case) | Tempest Overture (2.97) | Spacewalk Thoughts (2.28) | Tempest Overture fell #1 → #2 (1.73); Coffee Shop Stories #5 → #3 (1.69); Library Rain entered at #4 (1.50); Fuego en la Plaza #3 → #5 (1.48); Island Slowdown dropped out. |
+
+AFTER output (experimental weights) for the two most affected profiles:
+
+```
+######################################################
+PROFILE: Sad Banger (edge case)
+genre=blues | mood=sad | energy=0.90 | valence=0.20 | acoustic=no
+######################################################
+
+Top 5 recommendations
+======================================================
+1. Ironclad Fury - Grave Circuit               Score: 5.73 / 9.25
+     + no genre match: metal (+0.00)
+     + no mood match: angry (+0.00)
+     + energy 0.97 vs target 0.90 (+3.76)
+     + valence 0.18 vs target 0.20 (+1.49)
+     + acousticness 0.03, prefers non-acoustic (+0.48)
+------------------------------------------------------
+2. Storm Runner - Voltline                     Score: 5.01 / 9.25
+     + no genre match: rock (+0.00)
+     + no mood match: intense (+0.00)
+     + energy 0.91 vs target 0.90 (+4.00)
+     + valence 0.48 vs target 0.20 (+0.56)
+     + acousticness 0.10, prefers non-acoustic (+0.45)
+------------------------------------------------------
+3. Night Drive Loop - Neon Echo                Score: 4.93 / 9.25
+     + no genre match: synthwave (+0.00)
+     + mood family match: moody ~ sad (+1.00)
+     + energy 0.75 vs target 0.90 (+3.02)
+     + valence 0.49 vs target 0.20 (+0.52)
+     + acousticness 0.22, prefers non-acoustic (+0.39)
+------------------------------------------------------
+4. Rust in the Rain - Delta Marrow             Score: 4.92 / 9.25
+     + genre match: blues (+1.25)
+     + mood match: sad (+2.00)
+     + energy 0.33 vs target 0.90 (+0.07)
+     + valence 0.22 vs target 0.20 (+1.49)
+     + acousticness 0.78, prefers non-acoustic (+0.11)
+------------------------------------------------------
+5. Gym Hero - Max Pulse                        Score: 4.46 / 9.25
+     + no genre match: pop (+0.00)
+     + no mood match: intense (+0.00)
+     + energy 0.93 vs target 0.90 (+3.96)
+     + valence 0.77 vs target 0.20 (+0.03)
+     + acousticness 0.05, prefers non-acoustic (+0.47)
+
+######################################################
+PROFILE: High-Energy Pop
+genre=pop | mood=happy | energy=0.80 | valence=0.80 | acoustic=no
+######################################################
+
+Top 5 recommendations
+======================================================
+1. Sunrise City - Neon Echo                    Score: 9.11 / 9.25
+     + genre match: pop (+1.25)
+     + mood match: happy (+2.00)
+     + energy 0.82 vs target 0.80 (+3.98)
+     + valence 0.84 vs target 0.80 (+1.47)
+     + acousticness 0.18, prefers non-acoustic (+0.41)
+------------------------------------------------------
+2. Rooftop Lights - Indigo Parade              Score: 8.37 / 9.25
+     + related genre: indie pop ~ pop (+0.62)
+     + mood match: happy (+2.00)
+     + energy 0.76 vs target 0.80 (+3.92)
+     + valence 0.81 vs target 0.80 (+1.50)
+     + acousticness 0.35, prefers non-acoustic (+0.33)
+------------------------------------------------------
+3. Gym Hero - Max Pulse                        Score: 6.44 / 9.25
+     + genre match: pop (+1.25)
+     + no mood match: intense (+0.00)
+     + energy 0.93 vs target 0.80 (+3.24)
+     + valence 0.77 vs target 0.80 (+1.48)
+     + acousticness 0.05, prefers non-acoustic (+0.47)
+------------------------------------------------------
+4. Fuego en la Plaza - Los Faroles             Score: 5.48 / 9.25
+     + no genre match: latin (+0.00)
+     + no mood match: energetic (+0.00)
+     + energy 0.86 vs target 0.80 (+3.82)
+     + valence 0.88 vs target 0.80 (+1.38)
+     + acousticness 0.45, prefers non-acoustic (+0.28)
+------------------------------------------------------
+5. Concrete Psalms - Verse Theory              Score: 5.44 / 9.25
+     + no genre match: hip-hop (+0.00)
+     + no mood match: confident (+0.00)
+     + energy 0.80 vs target 0.80 (+4.00)
+     + valence 0.62 vs target 0.80 (+1.00)
+     + acousticness 0.12, prefers non-acoustic (+0.44)
+```
+
+*(The related-genre reason shows +0.62 because 0.625 is rounded to 2 decimals
+for display.)*
+
+**More accurate or just different?** Some profiles got more accurate: Sad
+Banger now opens with a loud, dark song (Ironclad Fury), and High-Energy Pop
+swapped out the slow Island Slowdown for upbeat Fuego en la Plaza, which is the
+swap I wanted in Step 2. Others just got different or worse: the one classical
+song lost #1 in Silent Classical, the metal song (related to rock) slipped
+below a hip-hop song in Deep Intense Rock, and Sad Banger's #2 and #5 (Storm
+Runner, Gym Hero) match no labels at all, so they're there only because their
+energy is close. Energy is now worth 4 of 9.25 points, so the system went from
+"labels decide" to "energy decides". A better balance is probably somewhere
+between the original weights and these.
+
 
 ---
 

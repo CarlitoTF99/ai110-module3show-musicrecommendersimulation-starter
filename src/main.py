@@ -12,16 +12,11 @@ You will implement the functions in recommender.py:
 from src.recommender import (
     load_songs,
     recommend_songs,
-    GENRE_EXACT_POINTS,
-    MOOD_EXACT_POINTS,
-    ENERGY_WEIGHT,
-    VALENCE_WEIGHT,
-    ACOUSTIC_WEIGHT,
+    MAX_SCORE,
     DEFAULT_TARGET_VALENCE,
     DEFAULT_LIKES_ACOUSTIC,
 )
 
-MAX_SCORE = GENRE_EXACT_POINTS + MOOD_EXACT_POINTS + ENERGY_WEIGHT + VALENCE_WEIGHT + ACOUSTIC_WEIGHT
 LINE_WIDTH = 54
 NAME_WIDTH = 44
 
