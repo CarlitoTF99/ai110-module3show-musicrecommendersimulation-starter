@@ -129,16 +129,118 @@ Other biases I found:
 
 ## 7. Evaluation  
 
-How you checked whether the recommender behaved as expected. 
+### Profiles tested
 
-Prompts:  
+I tested 7 listener profiles: 3 normal ones and 4 "edge cases" built to trick
+the scoring.
 
-- Which user profiles you tested  
-- What you looked for in the recommendations  
-- What surprised you  
-- Any simple tests or comparisons you ran  
+1. **High-Energy Pop:** pop, happy, energy 0.80, valence 0.80, not acoustic
+2. **Chill Lofi:** lofi, chill, energy 0.40, valence 0.60, acoustic
+3. **Deep Intense Rock:** rock, intense, energy 0.90, valence 0.40, not acoustic
+4. **Sad Banger (edge case):** blues, sad, but loud (energy 0.90), valence 0.20
+5. **Acoustic Chill Rock (edge case):** rock, but chill, quiet (energy 0.20) and acoustic
+6. **Ghost Genre (edge case):** k-pop, a genre that isn't in the catalog
+7. **Silent Classical (edge case):** classical, "calm", energy 0.0, valence 1.0
 
-No need for numeric metrics unless you created some.
+**How I checked the results:**
+- I worked out two scores by hand for the Chill Lofi profile and they matched
+  the program exactly: Library Rain 8.37 / 8.5 and Storm Runner 1.38 / 8.5.
+- I checked that every song's listed reasons add up to its score, for all
+  20 songs and all 7 profiles (140 checks, no mismatches).
+- The automated tests (`pytest`) pass.
+
+### What surprised me
+
+- **Fuego en la Plaza is in the top 5 for 4 of the 7 profiles,** even though
+  it never matches anyone's genre. Its energy (0.86) and positivity (0.88) are
+  close to what most upbeat listeners want, so it collects points on sound
+  alone.
+- **"calm" matches nothing.** It's the name of a mood *family*, not a mood any
+  song has, so Silent Classical gets zero mood points from every song.
+- **Ghost Genre fails silently.** No song is k-pop, so the best possible score
+  drops from 8.5 to 6.0, but the program gives no warning. It just shows
+  regular pop songs as if nothing were wrong.
+
+**Intuition check (High-Energy Pop):** Sunrise City at #1 feels right, since it's
+upbeat, high-energy pop. Rooftop Lights at #2 also fits. Gym Hero at #3 feels
+slightly off: it's pop, but "intense" is more workout music than happy music.
+Island Slowdown at #4 feels wrong. It's a slow reggae song (energy 0.55) that
+only got in because "carefree" counts as related to "happy." Fuego en la Plaza
+(#5) actually sounds more like what this listener wants (energy 0.86, valence
+0.88), so I'd swap #4 and #5.
+
+### Profile comparisons
+
+**High-Energy Pop vs Chill Lofi:** the two top-5 lists share no songs. The pop
+list is loud and electronic (energy 0.55–0.93), and the lofi list is quiet and
+acoustic (energy 0.28–0.42). This makes sense because the two listeners want
+opposite things on almost every setting: energy 0.80 vs 0.40, and electronic
+vs acoustic.
+
+**High-Energy Pop vs Deep Intense Rock:** both lists include Gym Hero and Fuego
+en la Plaza, but Gym Hero moves up from #3 to #2 for the rock fan. This makes
+sense because both listeners want loud, electronic music. Gym Hero loses its pop
+genre points with the rock fan, but it wins them back with a mood match
+("intense", +2.0).
+
+**Chill Lofi vs Deep Intense Rock:** both #1 songs are near-perfect (8.37 and
+8.33), but the rock fan's #2 drops to 4.72, while the lofi fan's #5 still
+scores 5.97. This makes sense because the catalog has 3 lofi songs plus 2
+related genres (jazz and ambient), but only 1 rock song plus 1 related genre
+(metal). The lofi fan simply has more good options.
+
+**Sad Banger vs Acoustic Chill Rock:** in Sad Banger the labels win: Rust in
+the Rain is #1 (6.13) even though it's quiet (energy 0.33 vs 0.90 wanted). In
+Acoustic Chill Rock the sound wins: the only rock song, Storm Runner, ends up
+#6 (3.80) and the top 5 has no rock at all. Both follow the same rule.
+Whichever side agrees with itself wins: Rust in the Rain matches both genre and
+mood, while Storm Runner matches the genre but is loud and electronic when the
+listener wants quiet and acoustic.
+
+**High-Energy Pop vs Ghost Genre:** these profiles are the same except for the
+genre (pop vs k-pop). The top 2 are the same songs, but each loses its genre
+points (Sunrise City 8.37 → 5.87, Rooftop Lights 7.04 → 5.79), and Gym Hero
+drops from #3 to #5 (6.07 → 3.57). This makes sense because genre was Gym
+Hero's only matching label. Without it, the happy songs lead and Gym Hero has
+to compete on sound alone.
+
+**Deep Intense Rock vs Acoustic Chill Rock:** both fans picked rock, but Storm
+Runner goes from #1 (8.33) to #6 (3.80), and the two top-5 lists share no songs.
+This makes sense because genre is worth only 2.5 points, and every other
+preference flipped (energy 0.90 → 0.20, intense → chill, electronic →
+acoustic), so Storm Runner fails all of them.
+
+**Chill Lofi vs Silent Classical:** both want quiet, acoustic music, and two
+songs appear in both lists (Spacewalk Thoughts and Coffee Shop Stories). But
+the lofi #1 scores 8.37, while the classical #1 scores only 2.97. This makes
+sense because Silent Classical asks for things the catalog doesn't have: no
+song is quieter than 0.28 or happier than 0.88, and "calm" matches no mood. The
+only classical song (Tempest Overture) is loud and dramatic, but it wins on
+genre points alone.
+
+### Why does "Gym Hero" keep showing up?
+
+Gym Hero shows up for High-Energy Pop (#3), Deep Intense Rock (#2) and Ghost
+Genre (#5) because it's a little bit of everything: it's labeled pop, its mood
+is "intense", it's very energetic (0.93), fairly upbeat (0.77) and almost fully
+electronic. Each listener finds a different reason to like it. The pop fan
+gives it genre points, the rock fan gives it mood points, and all three give it
+strong energy points (1.62–1.98 out of 2.0). The system
+also never takes points *away*. A happy-pop listener doesn't want workout music,
+but the "intense" mood just earns zero instead of counting against the song. So
+a gym song can still land in a "Happy Pop" list, and with only 2 pop songs in
+the catalog there isn't much competition to push it out.
+
+### Weight-shift experiment
+
+I tried doubling the energy weight (2.0 → 4.0) and halving the genre weight
+(2.5 → 1.25, related genres 1.25 → 0.625), then put the weights back. Sad
+Banger improved, with the loud, dark Ironclad Fury moving to #1 (5.73 / 9.25),
+and the #1 song for the three normal profiles didn't change. But songs that
+match no labels at all (Storm Runner, Gym Hero, Concrete Psalms) moved into
+top-5 lists on energy alone, and the one classical song lost #1. So the results
+were more *different* than more *accurate*: the system went from "labels
+decide" to "energy decides".
 
 ---
 
