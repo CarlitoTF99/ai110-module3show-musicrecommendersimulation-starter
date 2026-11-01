@@ -2,16 +2,13 @@
 
 ## Project Summary
 
-In this project you will build and explain a small music recommender system.
-
-Your goal is to:
-
-- Represent songs and a user "taste profile" as data
-- Design a scoring rule that turns that data into recommendations
-- Evaluate what your system gets right and wrong
-- Reflect on how this mirrors real world AI recommenders
-
-Replace this paragraph with your own summary of what your version does.
+VibeMatch is a content-based music recommender that scores each of 20 songs
+against a listener profile on genre, mood, energy, valence and acousticness,
+for a maximum of 8.5 points. It returns the top 5 songs, and every
+recommendation lists exactly where each of its points came from. On top of that
+core, it adds opt-in stretch features: 5 advanced song attributes, 4 switchable
+scoring modes, a diversity penalty for repeated artists and genres, and a
+summary table view.
 
 ---
 
@@ -56,9 +53,12 @@ with no matching labels can't beat one that matches both. Energy and valence tog
 - `energy` – 0–1, how intense the song feels
 - `valence` – 0–1, how positive/happy it sounds
 - `acousticness` – 0–1, acoustic vs. electronic
-- (`tempo_bpm` and `danceability` are kept in the data but not scored — in this
-  dataset they are almost perfectly correlated with energy, so scoring them
-  would count "intensity" several times.)
+- (`tempo_bpm` and `danceability` are kept in the data but not scored. In the
+  original 10-song catalog, energy, tempo, acousticness and danceability moved
+  almost together. In the expanded 20-song catalog, tempo still tracks energy
+  closely (r≈0.84), acousticness runs opposite to it (r≈−0.61), and
+  danceability is only loosely related (r≈0.42). I left tempo and danceability
+  out to keep the model simple and avoid counting intensity twice.)
 
 **`UserProfile`**
 - `favorite_genre` – the genre they want
@@ -175,7 +175,8 @@ scores about **1.38 / 8.5**.
 - **Conflicting preferences:** a user who wants "rock" but also "chill, low
   energy" may get no rock songs at all, because mood + energy outweigh genre.
 - **Filter bubble:** nothing stops the top 5 from being all one genre or one
-  artist. I plan to address this with a diversity rule in the ranking step.
+  artist. This is addressed by the opt-in `--diverse` flag (see Stretch
+  Features).
 
 ---
 
@@ -217,10 +218,16 @@ You can add more tests in `tests/test_recommender.py`.
 
 ## Sample Recommendation Output
 
-Profile: genre=pop | mood=happy | energy=0.80 | valence=0.80 | acoustic=no
+```text
 Loaded songs: 20
 
-### Top 5 recommendations
+######################################################
+PROFILE: High-Energy Pop
+genre=pop | mood=happy | energy=0.80 | valence=0.80 | acoustic=no
+mode=balanced
+######################################################
+
+Top 5 recommendations
 ======================================================
 1. Sunrise City - Neon Echo                    Score: 8.37 / 8.5
      + genre match: pop (+2.50)
@@ -256,6 +263,7 @@ Loaded songs: 20
      + energy 0.86 vs target 0.80 (+1.91)
      + valence 0.88 vs target 0.80 (+1.38)
      + acousticness 0.45, prefers non-acoustic (+0.28)
+```
 
   - Sunrise City ranks first because it matches every preference. Rooftop Lights is
   second thanks to partial genre credit (indie pop ~ pop), and Gym Hero is still in
@@ -267,18 +275,19 @@ Loaded songs: 20
 
 ### Profile results
 
-I ran the recommender for 3 standard profiles and 4 edge-case profiles designed
-to trick the scoring logic (`python -m src.main`). Full top-5 output for each:
+I ran the recommender (`python -m src.main`) for 3 standard, 4 edge-case
+(designed to trick the scoring logic), and 1 advanced profile (the advanced one
+is shown under Stretch Features). Full top-5 output for the first 7:
 
 #### 1. High-Energy Pop
 ```
 ######################################################
 PROFILE: High-Energy Pop
 genre=pop | mood=happy | energy=0.80 | valence=0.80 | acoustic=no
+mode=balanced
 ######################################################
 
 Top 5 recommendations
-
 ======================================================
 1. Sunrise City - Neon Echo                    Score: 8.37 / 8.5
      + genre match: pop (+2.50)
@@ -321,6 +330,7 @@ Top 5 recommendations
 ######################################################
 PROFILE: Chill Lofi
 genre=lofi | mood=chill | energy=0.40 | valence=0.60 | acoustic=yes
+mode=balanced
 ######################################################
 
 Top 5 recommendations
@@ -359,7 +369,6 @@ Top 5 recommendations
      + energy 0.37 vs target 0.40 (+1.98)
      + valence 0.71 vs target 0.60 (+1.29)
      + acousticness 0.89, likes acoustic (+0.45)
-
 ```
 
 #### 3. Deep Intense Rock
@@ -367,6 +376,7 @@ Top 5 recommendations
 ######################################################
 PROFILE: Deep Intense Rock
 genre=rock | mood=intense | energy=0.90 | valence=0.40 | acoustic=no
+mode=balanced
 ######################################################
 
 Top 5 recommendations
@@ -405,15 +415,14 @@ Top 5 recommendations
      + energy 0.86 vs target 0.90 (+1.96)
      + valence 0.88 vs target 0.40 (+0.08)
      + acousticness 0.45, prefers non-acoustic (+0.28)
-
 ```
 
 #### 4. Sad Banger (edge case)
 ```
-
 ######################################################
 PROFILE: Sad Banger (edge case)
 genre=blues | mood=sad | energy=0.90 | valence=0.20 | acoustic=no
+mode=balanced
 ######################################################
 
 Top 5 recommendations
@@ -452,7 +461,6 @@ Top 5 recommendations
      + energy 0.30 vs target 0.90 (+0.02)
      + valence 0.28 vs target 0.20 (+1.38)
      + acousticness 0.08, prefers non-acoustic (+0.46)
-
 ```
 
 #### 5. Acoustic Chill Rock (edge case)
@@ -460,6 +468,7 @@ Top 5 recommendations
 ######################################################
 PROFILE: Acoustic Chill Rock (edge case)
 genre=rock | mood=chill | energy=0.20 | valence=0.60 | acoustic=yes
+mode=balanced
 ######################################################
 
 Top 5 recommendations
@@ -505,6 +514,7 @@ Top 5 recommendations
 ######################################################
 PROFILE: Ghost Genre (edge case)
 genre=k-pop | mood=happy | energy=0.80 | valence=0.80 | acoustic=no
+mode=balanced
 ######################################################
 
 Top 5 recommendations
@@ -543,7 +553,6 @@ Top 5 recommendations
      + energy 0.93 vs target 0.80 (+1.62)
      + valence 0.77 vs target 0.80 (+1.48)
      + acousticness 0.05, prefers non-acoustic (+0.47)
-
 ```
 
 #### 7. Silent Classical (edge case)
@@ -551,6 +560,7 @@ Top 5 recommendations
 ######################################################
 PROFILE: Silent Classical (edge case)
 genre=classical | mood=calm | energy=0.00 | valence=1.00 | acoustic=yes
+mode=balanced
 ######################################################
 
 Top 5 recommendations
@@ -589,8 +599,6 @@ Top 5 recommendations
      + energy 0.37 vs target 0.00 (+0.36)
      + valence 0.71 vs target 1.00 (+0.52)
      + acousticness 0.89, likes acoustic (+0.45)
-
-
 ```
 
 ### Experiment: Weight Shift (energy x2, genre x0.5)

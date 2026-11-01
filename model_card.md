@@ -11,7 +11,8 @@
 VibeMatch suggests the top 5 songs from a 20-song catalog that best fit one
 listener. The listener describes their taste with a favorite genre, a mood, how
 energetic and how positive they want the music to be, and whether they like
-acoustic songs. Every song gets a score out of 8.5, and each recommendation
+acoustic songs. Every song gets a score out of 8.5 (or out of up to 12 when a
+profile uses the optional advanced features), and each recommendation
 comes with the reasons behind its score.
 
 ---
@@ -27,9 +28,12 @@ comes with the reasons behind its score.
   relaxed, focused, moody, sad, melancholy, angry, dramatic, confident,
   energetic, hopeful, carefree, romantic and nostalgic.
 - **5 scored features:** genre, mood, energy, valence and acousticness.
-- **2 unscored features:** tempo_bpm and danceability. They're in the data, but
-  in this catalog they move almost exactly with energy, so scoring them would
-  count the same thing twice.
+- **2 unscored features:** tempo_bpm and danceability. In the original 10-song
+  catalog, energy, tempo, acousticness and danceability moved almost together.
+  In the expanded 20-song catalog, tempo still tracks energy closely (r≈0.84),
+  acousticness runs opposite to it (r≈−0.61), and danceability is only loosely
+  related (r≈0.42). I left tempo and danceability out to keep the model simple
+  and avoid counting intensity twice.
 - **5 advanced features (stretch, opt-in):** these only earn points when a
   listener's profile asks for them.
   - *popularity* (0–100): how well-known the song is.
@@ -88,8 +92,11 @@ added valence and acousticness, and added partial credit for related genres and
 similar moods. My data analysis showed that genre labels are sparse (most genres
 have only one song) and mood labels are inconsistent, so relying mostly on genre
 would leave most of the catalog with almost no points. I also left out tempo and
-danceability because in this dataset they move almost exactly with energy, and
-scoring them would count the same thing several times.
+danceability. In the original 10-song catalog, energy, tempo, acousticness and
+danceability moved almost together. In the expanded 20-song catalog, tempo
+still tracks energy closely (r≈0.84), acousticness runs opposite to it
+(r≈−0.61), and danceability is only loosely related (r≈0.42). Leaving them out
+keeps the model simple and avoids counting intensity twice.
 
 ---
 
@@ -126,7 +133,7 @@ Other biases I found:
   highest possible score drops from 8.5 to 6.0. "calm" is the name of a mood
   family, not a mood, so it matches nothing and Silent Classical's ceiling
   drops to 6.5. In both cases the system shows no warning.
-- **Same songs keep appearing:** across the 7 test profiles, Fuego en la Plaza
+- **Same songs keep appearing:** across the 7 original profiles, Fuego en la Plaza
   is in the top 5 four times, and Gym Hero, Island Slowdown, Spacewalk
   Thoughts and Coffee Shop Stories three times each. Meanwhile Hollow Porch
   Light, Velvet Hours and Dust Road Letters never appear at all.
@@ -162,8 +169,8 @@ appears twice.
 
 ### Profiles tested
 
-I tested 7 listener profiles: 3 normal ones and 4 "edge cases" built to trick
-the scoring.
+I tested 8 listener profiles: 3 normal ones, 4 "edge cases" built to trick
+the scoring, and 1 advanced profile that uses the optional stretch features.
 
 1. **High-Energy Pop:** pop, happy, energy 0.80, valence 0.80, not acoustic
 2. **Chill Lofi:** lofi, chill, energy 0.40, valence 0.60, acoustic
@@ -172,6 +179,7 @@ the scoring.
 5. **Acoustic Chill Rock (edge case):** rock, but chill, quiet (energy 0.20) and acoustic
 6. **Ghost Genre (edge case):** k-pop, a genre that isn't in the catalog
 7. **Silent Classical (edge case):** classical, "calm", energy 0.0, valence 1.0
+8. **Nostalgic Explorer (advanced):** folk, nostalgic, energy 0.55, acoustic, plus all 5 advanced keys (popularity 40, 1970s, nostalgic/warm/wistful tags, instrumentalness 0.15, english)
 
 **How I checked the results:**
 - I worked out two scores by hand for the Chill Lofi profile and they matched
@@ -292,9 +300,9 @@ decide" to "energy decides".
 
 ## 8. Ideas for Improvement
 
-- **Add a diversity rule to the ranking step** (for example, at most one song
-  per artist in the top 5). This would break up filter bubbles, like the same
-  LoRoom songs or the same few songs filling every list.
+- **Make the diversity penalty stronger or offer a hard one-per-artist cap.**
+  Right now it only changes one song across all 8 profiles, because the
+  catalog is too small to have good alternatives.
 - **Let listeners pick several favorite genres with weights, plus dislikes.**
   This would fix the "rock fan gets no rock" problem, because a listener could
   say rock matters more than mood, and dislikes could push out songs from
@@ -316,8 +324,8 @@ preferences win. Label points and sound points were almost equal in my design,
 so whichever group agreed with itself took over.
 
 **How AI helped, and when I had to double-check it:** AI helped me analyze the
-dataset (it found that energy, tempo, and acousticness were nearly the same
-signal), test weight options before writing code, and suggest edge-case
+dataset (it found that tempo tracked energy closely and acousticness ran
+opposite to it), test weight options before writing code, and suggest edge-case
 profiles I wouldn't have thought of. But I had to check its work. It caught
 my own typo (`target_valence: 40` instead of `0.40`), and I caught it giving
 two different acousticness rules in my README. My first "rock" profile also
@@ -332,7 +340,8 @@ surprised me how one song, Fuego en la Plaza, kept showing up for very
 different listeners, just because it's high-energy and happy and the catalog
 is small.
 
-**What I'd try next:** Add an artist/genre diversity rule so the top 5 aren't
-dominated by one style, let users list several genres and dislikes, and test
+**What I'd try next:** Make the diversity penalty stronger or add a hard
+one-per-artist cap (right now it only changes one song across all 8 profiles),
+let users list several genres and dislikes, and test
 with a much bigger, more balanced catalog to see whether the biases I found
 shrink or just change shape.

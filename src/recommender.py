@@ -1,6 +1,6 @@
 import csv
 import math
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple
 from dataclasses import dataclass, asdict, field
 
 # --- Scoring recipe (max score is MAX_SCORE below) ---
